@@ -434,10 +434,10 @@ graph LR
 
     subgraph "API v1 Routes"
         STATS[GET /api/v1/stats]
-        RESERVATIONS[/api/v1/reservations/...]
-        SERVICES[/api/v1/services/...]
-        PAYMENTS[/api/v1/payments/...]
-        ANALYTICS[/api/v1/analytics/...]
+        RESERVATIONS[Reservations API]
+        SERVICES[Services API]
+        PAYMENTS[Payments API]
+        ANALYTICS[Analytics API]
     end
 
     style ROOT fill:#90EE90
