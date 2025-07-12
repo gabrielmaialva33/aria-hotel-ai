@@ -2,17 +2,10 @@
 FROM python:3.12-slim AS builder
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    curl &&
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y gcc g++ curl && rm -rf /var/lib/apt/lists/*
 
 # Install uv and move to a known location
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh &&
-    cp /root/.cargo/bin/uv /usr/local/bin/uv ||
-    cp /root/.local/bin/uv /usr/local/bin/uv ||
-    echo "uv not found in expected locations"
+RUN (curl -LsSf https://astral.sh/uv/install.sh | sh) && (cp /root/.cargo/bin/uv /usr/local/bin/uv || cp /root/.local/bin/uv /usr/local/bin/uv || echo "uv not found in expected locations")
 
 # Set working directory
 WORKDIR /app
@@ -32,13 +25,7 @@ RUN uv pip install -e . --no-cache-dir
 FROM python:3.12-slim
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    tesseract-ocr \
-    tesseract-ocr-por \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    curl &&
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-por libgl1-mesa-glx libglib2.0-0 curl && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN useradd -m -u 1000 aria
