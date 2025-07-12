@@ -135,6 +135,27 @@ class AnaAgent:
             return response
         
         try:
+            # Check for simple acknowledgments
+            simple_acks = ["ok", "sim", "certo", "entendi", "beleza", "blz", "ta", "tá"]
+            if message.lower().strip() in simple_acks:
+                # Create an appropriate response based on context
+                if conv_context.current_request:
+                    response_text = (
+                        "Perfeito! 🎉 Sua reserva está quase pronta!\n\n"
+                        "Para finalizar, você pode:\n"
+                        "1. Me enviar seus dados pessoais para o cadastro\n"
+                        "2. Fazer a reserva online em nosso site\n"
+                        "3. Ligar para nossa recepção: (15) 3542-0000\n\n"
+                        "Como prefere prosseguir? 😊"
+                    )
+                else:
+                    response_text = "Legal! 😊 Posso ajudar com mais alguma coisa? Temos informações sobre o hotel, restaurante, lazer e muito mais!"
+                
+                response = AnaResponse(text=response_text)
+                conv_context.add_message("assistant", response.text)
+                self.contexts[phone] = conv_context
+                return response
+            
             # Build context for Agno
             agno_context = {
                 "guest_phone": phone,
@@ -189,6 +210,10 @@ class AnaAgent:
     
     def _parse_agent_response(self, response_text: str) -> AnaResponse:
         """Parse agent response for structured actions."""
+        # Ensure we have a valid response text
+        if not response_text or not str(response_text).strip():
+            response_text = "Entendi! Como posso ajudar você?"
+        
         # Default response
         response = AnaResponse(text=response_text)
         
