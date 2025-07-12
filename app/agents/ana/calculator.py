@@ -260,4 +260,10 @@ class PricingCalculator:
 
             message += "\n"
 
+        # Add quick replies
+        options = [meal_plan_names[mp] for mp in by_meal_plan.keys()]
+        message += "[[QUICK_REPLIES:"
+        message += ", ".join(options)
+        message += "]]"
+
         return message.strip()

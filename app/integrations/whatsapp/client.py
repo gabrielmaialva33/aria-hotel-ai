@@ -189,19 +189,50 @@ class WhatsAppClient:
             options: List[str]
     ) -> str:
         """
-        Send message with quick reply options.
+        Send WhatsApp message with interactive quick reply buttons.
         
-        Note: WhatsApp Business API supports quick replies,
-        but Twilio's implementation may vary.
+        Args:
+            to: Recipient phone number
+            body: Message text
+            options: List of button labels (max 3)
+            
+        Returns:
+            Message SID
         """
-        # Format options as numbered list
-        formatted_body = f"{body}\n\n"
-        for i, option in enumerate(options, 1):
-            formatted_body += f"{i}. {option}\n"
+        if not to.startswith("whatsapp:"):
+            to = f"whatsapp:{to}"
 
-        formatted_body += "\nResponda com o número da opção desejada."
+        try:
+            # Use PersistentAction for interactive buttons (up to 3)
+            message = self.client.messages.create(
+                from_=self.from_number,
+                to=to,
+                body=body,
+                persistent_action=options[:3]
+            )
 
-        return await self.send_message(to, formatted_body)
+            logger.info(
+                "WhatsApp quick replies sent",
+                message_sid=message.sid,
+                to=to,
+                options=options[:3]
+            )
+
+            return message.sid
+
+        except Exception as e:
+            logger.error(
+                "Failed to send WhatsApp quick replies",
+                error=str(e),
+                to=to
+            )
+            # Fallback to text-based list
+            logger.info("Falling back to text-based quick replies")
+            formatted_body = f"{body}\n\n"
+            for i, option in enumerate(options, 1):
+                formatted_body += f"{i}. {option}\n"
+            formatted_body += "\nResponda com o número da opção desejada."
+            return await self.send_message(to, formatted_body)
 
     async def send_location(
             self,

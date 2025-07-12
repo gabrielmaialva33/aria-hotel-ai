@@ -12,6 +12,7 @@ from agno.tools.reasoning import ReasoningTools
 
 # Local imports
 from app.agents.ana.calculator import PricingCalculator
+from app.agents.ana.proactive_concierge import ProactiveConcierge
 from app.agents.ana.knowledge_base import (
     HOTEL_INFO,
     PASTA_ROTATION,
@@ -47,6 +48,7 @@ class AnaAgent:
         """Initialize Ana agent with Agno framework and tools."""
         self.name = "Ana"
         self.calculator = PricingCalculator()
+        self.proactive_concierge = ProactiveConcierge()
         self.contexts: Dict[str, ConversationContext] = {}
         
         # Get API key (try both GEMINI_API_KEY and GOOGLE_API_KEY)
@@ -68,7 +70,9 @@ class AnaAgent:
                 id="gemini-2.0-flash",  # Recommended for most use-cases
                 api_key=api_key,
                 temperature=0.7,
-                vertexai=False,  # Force Google AI Studio instead of Vertex AI
+                vertexai=settings.google_genai_use_vertexai,
+                project_id=settings.google_cloud_project,
+                location=settings.google_cloud_location,
             ),
             reasoning=True,  # Enable reasoning for better responses
             instructions=ANA_SYSTEM_PROMPT + f"\n\nData atual: {datetime.now().strftime('%d/%m/%Y')} ({datetime.now().strftime('%A')})",
@@ -90,6 +94,7 @@ class AnaAgent:
                 self.update_guest_preferences,
                 self.route_service_request,
                 self.check_payment_status,
+                self.get_proactive_suggestions,
             ],
             # Chat history configuration
             add_history_to_messages=True,
@@ -125,8 +130,9 @@ class AnaAgent:
         # Add message to history
         conv_context.add_message("user", message)
         
-        # First message - send greeting only if it's really the first interaction
-        if len(conv_context.history) == 1 and conv_context.state == "initial":
+        # First message - send greeting only if it's not a direct query
+        is_direct_query = any(keyword in message.lower() for keyword in ["diaria", "preço", "valor", "quanto custa"])
+        if len(conv_context.history) == 1 and conv_context.state == "initial" and not is_direct_query:
             conv_context.state = "greeting_sent"
             response = AnaResponse(text=ANA_GREETING)
             conv_context.add_message("assistant", response.text)
@@ -241,6 +247,15 @@ class AnaAgent:
                 response.metadata["payment_link"] = link
                 response.text = response_text[:response_text.find("[[PAYMENT_LINK:")] + response_text[end + 2:]
         
+        if "[[QUICK_REPLIES:" in response_text:
+            # Extract quick replies
+            start = response_text.find("[[QUICK_REPLIES:") + len("[[QUICK_REPLIES:")
+            end = response_text.find("]]", start)
+            if end > start:
+                options_str = response_text[start:end]
+                response.quick_replies = [opt.strip() for opt in options_str.split(",")]
+                response.text = response_text[:response_text.find("[[QUICK_REPLIES:")] + response_text[end + 2:]
+
         return response
     
     def _get_conversation_context(
@@ -742,3 +757,31 @@ class AnaAgent:
         
         # Try the original parse_date method
         return self._parse_date(date_str)
+
+    async def get_proactive_suggestions(self, guest_phone: str) -> str:
+        """
+        Get proactive suggestions for the guest.
+
+        Args:
+            guest_phone: Guest's phone number
+
+        Returns:
+            Formatted message with suggestions
+        """
+        context = self._get_conversation_context(guest_phone)
+        suggestions = await self.proactive_concierge.get_suggestions(context)
+
+        if not suggestions:
+            return ""
+
+        message = "Vi que você pode se interessar por:\n\n"
+        for suggestion in suggestions:
+            message += f"*{suggestion['title']}*\n"
+            message += f"{suggestion['text']}\n"
+            if suggestion.get('quick_replies'):
+                message += "[[QUICK_REPLIES:"
+                message += ", ".join(suggestion['quick_replies'])
+                message += "]]\n"
+            message += "\n"
+
+        return message.strip()

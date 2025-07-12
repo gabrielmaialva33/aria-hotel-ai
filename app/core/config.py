@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     vision_model: str = Field(default="gemini-2.0-flash", description="Vision model (2.0 models are multi-modal)")
     fast_llm_model: str = Field(default="gemini-2.0-flash-lite", description="Fast LLM for simple tasks")
     embedding_model: str = Field(default="text-embedding-3-small", description="Embedding model")
+    google_cloud_project: Optional[str] = Field(default="gen-lang-client-0455398774", description="Google Cloud project for Vertex AI")
+    google_cloud_location: Optional[str] = Field(default="global", description="Google Cloud location for Vertex AI")
+    google_genai_use_vertexai: bool = Field(default=True, description="Use Vertex AI instead of Google AI Studio")
 
     @field_validator("app_env")
     @classmethod
