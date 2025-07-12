@@ -350,10 +350,10 @@ cd aria-hotel-ai
 #### Opção 1: Docker (Recomendado)
 
 ```sh
-# Copiar arquivo de ambiente
-cp .env.example .env
+# Criar arquivo de ambiente a partir do template
+cp .env .env.local  # ou criar seu próprio arquivo .env
 
-# Editar com suas chaves API
+# Editar com suas chaves API (obrigatório: GEMINI_API_KEY, credenciais Twilio)
 nano .env
 
 # Iniciar todos os serviços
@@ -361,6 +361,8 @@ docker-compose up --build
 
 # A API estará disponível em http://localhost:8000
 ```
+
+> **Nota**: Certifique-se de configurar pelo menos `GEMINI_API_KEY` e credenciais Twilio para funcionalidade básica.
 
 #### Opção 2: Desenvolvimento Local
 
@@ -371,26 +373,25 @@ source venv/bin/activate  # No Windows: venv\Scripts\activate
 
 # Instalar dependências
 pip install -r requirements.txt
-# ou
+# ou instalar em modo desenvolvimento
 pip install -e .
 
-# Copiar e configurar ambiente
-cp .env.example .env
+# Criar e configurar arquivo de ambiente
+cp .env .env.local  # ou criar seu próprio arquivo .env
 nano .env
 
 # Iniciar Redis e PostgreSQL (via Docker)
 docker-compose up -d postgres redis
 
-# Executar migrações do banco (se aplicável)
-python -m app.cli db init
-
 # Iniciar a aplicação
 python main.py
-# ou
+# ou usando o CLI
 aria serve
 
 # A API estará disponível em http://localhost:8000
 ```
+
+> **Nota**: Migrações de banco ainda não estão implementadas. A aplicação atualmente usa Redis para gerenciamento de sessão e funcionalidade básica.
 
 #### Opção 3: Usando o CLI
 
