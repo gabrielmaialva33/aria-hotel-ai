@@ -76,3 +76,31 @@ migrate: ## Run database migrations
 
 shell: ## Open Python shell with app context
 	ipython -i -c "from app import *"
+
+test-ana: ## Test Ana agent with Agno
+	python test_ana_local.py
+
+test-ana-examples: ## Run Ana agent examples
+	python examples/test_ana_agno.py
+
+check-env: ## Check if environment variables are set
+	@echo "Checking environment variables..."
+	@if [ -z "$$GEMINI_API_KEY" ]; then echo "❌ GEMINI_API_KEY not set"; else echo "✅ GEMINI_API_KEY is set"; fi
+	@if [ -z "$$TWILIO_ACCOUNT_SID" ]; then echo "❌ TWILIO_ACCOUNT_SID not set"; else echo "✅ TWILIO_ACCOUNT_SID is set"; fi
+	@if [ -z "$$TWILIO_AUTH_TOKEN" ]; then echo "❌ TWILIO_AUTH_TOKEN not set"; else echo "✅ TWILIO_AUTH_TOKEN is set"; fi
+	@if [ -z "$$DATABASE_URL" ]; then echo "⚠️  DATABASE_URL not set (using default)"; else echo "✅ DATABASE_URL is set"; fi
+	@if [ -z "$$REDIS_URL" ]; then echo "⚠️  REDIS_URL not set (using default)"; else echo "✅ REDIS_URL is set"; fi
+
+dev-setup: ## Complete development setup
+	@echo "Setting up development environment..."
+	cp .env.example .env
+	@echo "✅ Created .env file - Please edit with your API keys"
+	pip install -r requirements.txt
+	@echo "✅ Installed dependencies"
+	docker-compose up -d postgres redis
+	@echo "✅ Started database services"
+	@echo ""
+	@echo "Next steps:"
+	@echo "1. Edit .env file with your API keys"
+	@echo "2. Run 'make test-ana' to test Ana agent"
+	@echo "3. Run 'make run' to start the API server"

@@ -1,18 +1,15 @@
-"""Ana Agent - Main implementation."""
+"""Ana Agent - Main implementation using Agno framework."""
 
 import json
-from datetime import date, datetime
-from typing import Dict, List, Optional, Callable
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
-# Try to import Google Generative AI
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    logger = None
+# Agno imports
+from agno.agent import Agent
+from agno.models.google import Gemini
 
+# Local imports
 from app.agents.ana.calculator import PricingCalculator
 from app.agents.ana.knowledge_base import (
     HOTEL_INFO,
@@ -42,57 +39,41 @@ from app.core.config import settings
 logger = get_logger(__name__)
 
 
-@dataclass
-class Tool:
-    """Simple tool definition."""
-    name: str
-    description: str
-    function: Callable
-
-
 class AnaAgent:
-    """Ana - Virtual assistant for Hotel Passarim."""
+    """Ana - Virtual assistant for Hotel Passarim using Agno framework."""
     
     def __init__(self):
-        """Initialize Ana agent with tools and configuration."""
+        """Initialize Ana agent with Agno framework and tools."""
         self.name = "Ana"
-        self.system_prompt = ANA_SYSTEM_PROMPT
         self.calculator = PricingCalculator()
         self.contexts: Dict[str, ConversationContext] = {}
         
-        # Register tools
-        self.tools = {
-            "calculate_pricing": Tool(
-                name="calculate_pricing",
-                description="Calculate accommodation pricing based on dates and guests",
-                function=self.calculate_pricing
+        # Initialize Agno agent with Gemini
+        self.agent = Agent(
+            model=Gemini(
+                id="gemini-2.0-flash",
+                api_key=settings.gemini_api_key
             ),
-            "check_availability": Tool(
-                name="check_availability", 
-                description="Check room availability for given dates",
-                function=self.check_availability
-            ),
-            "generate_omnibees_link": Tool(
-                name="generate_omnibees_link",
-                description="Generate Omnibees reservation link",
-                function=self.generate_omnibees_link
-            ),
-            "transfer_to_reception": Tool(
-                name="transfer_to_reception",
-                description="Transfer conversation to human reception staff",
-                function=self.transfer_to_reception
-            ),
-            "provide_hotel_info": Tool(
-                name="provide_hotel_info",
-                description="Provide hotel information like WiFi, restaurant hours, amenities",
-                function=self.provide_hotel_info
-            ),
-            "handle_pasta_reservation": Tool(
-                name="handle_pasta_reservation",
-                description="Handle pasta rotation reservation",
-                function=self.handle_pasta_reservation
-            ),
-        }
+            system_prompt=ANA_SYSTEM_PROMPT,
+            tools=[
+                self.calculate_pricing,
+                self.check_availability,
+                self.generate_omnibees_link,
+                self.transfer_to_reception,
+                self.provide_hotel_info,
+                self.handle_pasta_reservation,
+                self.process_check_in,
+                self.get_guest_account_statement,
+                self.generate_payment_link,
+                self.schedule_satisfaction_survey,
+                self.send_marketing_campaign,
+                self.update_guest_preferences,
+                self.route_service_request,
+                self.check_payment_status,
+            ],
+            markdown=True,
+            temperature=0.7,
+        )
     
     async def process_message(
         self,
@@ -102,7 +83,7 @@ class AnaAgent:
         context: Optional[Dict] = None
     ) -> AnaResponse:
         """
-        Process incoming message from guest.
+        Process incoming message from guest using Agno.
         
         Args:
             phone: Guest's phone number
@@ -126,9 +107,26 @@ class AnaAgent:
             conv_context.add_message("assistant", response.text)
             return response
         
-        # Process message with simple intent detection
         try:
-            response = await self._process_with_intent(message, conv_context)
+            # Build context for Agno
+            agno_context = {
+                "guest_phone": phone,
+                "guest_name": conv_context.guest_name,
+                "conversation_state": conv_context.state,
+                "current_reservation": conv_context.current_request.model_dump() if conv_context.current_request else None,
+                "preferences": conv_context.preferences,
+                "media_url": media_url,
+                "history": conv_context.history[-5:]  # Last 5 messages for context
+            }
+            
+            # Process with Agno agent
+            response_text = await self.agent.arun(
+                message,
+                context=agno_context
+            )
+            
+            # Parse any structured actions from response
+            response = self._parse_agent_response(response_text)
             
             # Update context
             conv_context.add_message("assistant", response.text)
@@ -151,114 +149,36 @@ class AnaAgent:
                 action="transfer_to_reception"
             )
     
-    async def _process_with_intent(
-        self, 
-        message: str, 
-        context: ConversationContext
-    ) -> AnaResponse:
-        """Process message based on detected intent."""
-        message_lower = message.lower()
+    def _parse_agent_response(self, response_text: str) -> AnaResponse:
+        """Parse agent response for structured actions."""
+        # Default response
+        response = AnaResponse(text=response_text)
         
-        # Check for greetings
-        if any(word in message_lower for word in ["olá", "oi", "bom dia", "boa tarde", "boa noite"]):
-            return AnaResponse(text=ANA_GREETING)
+        # Check for special markers in response
+        if "[[TRANSFER_TO_RECEPTION]]" in response_text:
+            response.needs_human = True
+            response.action = "transfer_to_reception"
+            response.text = response_text.replace("[[TRANSFER_TO_RECEPTION]]", "").strip()
         
-        # Check for WiFi info
-        if any(word in message_lower for word in ["wifi", "internet", "senha"]):
-            return AnaResponse(text=WIFI_INFO)
+        if "[[OMNIBEES_LINK:" in response_text:
+            # Extract link
+            start = response_text.find("[[OMNIBEES_LINK:") + len("[[OMNIBEES_LINK:")
+            end = response_text.find("]]", start)
+            if end > start:
+                link = response_text[start:end]
+                response.metadata["omnibees_link"] = link
+                response.text = response_text[:response_text.find("[[OMNIBEES_LINK:")] + response_text[end + 2:]
         
-        # Check for restaurant info
-        if any(word in message_lower for word in ["restaurante", "almoço", "jantar", "café da manhã", "refeição"]):
-            return AnaResponse(text=RESTAURANT_INFO)
+        if "[[PAYMENT_LINK:" in response_text:
+            # Extract payment link
+            start = response_text.find("[[PAYMENT_LINK:") + len("[[PAYMENT_LINK:")
+            end = response_text.find("]]", start)
+            if end > start:
+                link = response_text[start:end]
+                response.metadata["payment_link"] = link
+                response.text = response_text[:response_text.find("[[PAYMENT_LINK:")] + response_text[end + 2:]
         
-        # Check for amenities info
-        if any(word in message_lower for word in ["lazer", "piscina", "estrutura", "atividades"]):
-            return AnaResponse(text=AMENITIES_INFO)
-        
-        # Check for reservation intent
-        if any(word in message_lower for word in ["reserva", "reservar", "hospedagem", "quarto", "valores", "preço"]):
-            # Check if we have dates in the message
-            if any(char.isdigit() for char in message):
-                # Try to extract dates and calculate
-                return await self._handle_pricing_request(message, context)
-            else:
-                return AnaResponse(text=REQUEST_INFO_TEMPLATE)
-        
-        # Check for pasta rotation
-        if any(word in message_lower for word in ["rodízio", "massa", "pasta"]):
-            return AnaResponse(
-                text="🍝 Nosso Rodízio de Massas acontece toda sexta e sábado, das 19h às 22h!\n\n"
-                     "Adultos: R$ 74,90 | Crianças (5-12): R$ 35,90\n\n"
-                     "Reserva obrigatória em: www.hotelpassarim.com.br/reservas"
-            )
-        
-        # Default: Ask what they need
-        return AnaResponse(
-            text="Como posso ajudar você? Posso fornecer informações sobre:\n"
-                 "• Valores de hospedagem\n"
-                 "• Disponibilidade de quartos\n"
-                 "• Estrutura e lazer\n"
-                 "• Horários do restaurante\n"
-                 "• Rodízio de massas\n"
-                 "• WiFi e outras comodidades"
-        )
-    
-    async def _handle_pricing_request(
-        self, 
-        message: str, 
-        context: ConversationContext
-    ) -> AnaResponse:
-        """Handle pricing calculation request."""
-        # Simple date extraction (this would be more sophisticated in production)
-        import re
-        
-        # Try to find dates in format DD/MM/YYYY or DD-MM-YYYY
-        date_pattern = r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})'
-        dates = re.findall(date_pattern, message)
-        
-        # Try to find number of adults
-        adults_pattern = r'(\d+)\s*(?:adult|pessoa|pax)'
-        adults_match = re.search(adults_pattern, message.lower())
-        adults = int(adults_match.group(1)) if adults_match else 2
-        
-        # Try to find children
-        children_pattern = r'(\d+)\s*(?:criança|filho)'
-        children_match = re.search(children_pattern, message.lower())
-        children_count = int(children_match.group(1)) if children_match else 0
-        
-        if len(dates) >= 2:
-            try:
-                # Parse dates
-                check_in = self._parse_date(dates[0])
-                check_out = self._parse_date(dates[1])
-                
-                # Calculate pricing
-                result = await self.calculate_pricing(
-                    check_in=check_in.strftime("%Y-%m-%d"),
-                    check_out=check_out.strftime("%Y-%m-%d"),
-                    adults=adults,
-                    children=[]  # Simplified for now
-                )
-                
-                return AnaResponse(text=result)
-                
-            except Exception as e:
-                logger.error("Error parsing dates", error=str(e))
-                return AnaResponse(text=REQUEST_INFO_TEMPLATE)
-        else:
-            return AnaResponse(text=REQUEST_INFO_TEMPLATE)
-    
-    def _parse_date(self, date_str: str) -> date:
-        """Parse date from string."""
-        for sep in ['/', '-']:
-            if sep in date_str:
-                parts = date_str.split(sep)
-                if len(parts) == 3:
-                    day, month, year = parts
-                    if len(year) == 2:
-                        year = f"20{year}"
-                    return date(int(year), int(month), int(day))
-        raise ValueError(f"Could not parse date: {date_str}")
+        return response
     
     def _get_conversation_context(
         self,
@@ -279,7 +199,7 @@ class AnaAgent:
         self.contexts[phone] = conv_context
         return conv_context
     
-    # Tool implementations
+    # Tool implementations for Agno
     
     async def calculate_pricing(
         self,
@@ -290,7 +210,20 @@ class AnaAgent:
         room_type: str = None,
         meal_plan: str = None
     ) -> str:
-        """Calculate and present pricing options."""
+        """
+        Calculate and present pricing options for hotel stay.
+        
+        Args:
+            check_in: Check-in date (YYYY-MM-DD)
+            check_out: Check-out date (YYYY-MM-DD)
+            adults: Number of adults
+            children: List of children ages
+            room_type: Optional room type preference
+            meal_plan: Optional meal plan preference
+            
+        Returns:
+            Formatted pricing message
+        """
         try:
             # Parse dates
             check_in_date = datetime.strptime(check_in, "%Y-%m-%d").date()
@@ -314,7 +247,7 @@ class AnaAgent:
                     "• Mais de 4 pessoas no mesmo quarto\n"
                     "• Crianças acima de 5 anos (precisam cama extra)\n"
                     "• Pacotes com refeições incluídas\n\n"
-                    "Vou transferir para a recepção finalizar sua reserva!"
+                    "[[TRANSFER_TO_RECEPTION]] Vou transferir para a recepção finalizar sua reserva!"
                 )
             
             # Calculate pricing
@@ -333,7 +266,17 @@ class AnaAgent:
         check_out: str,
         room_type: Optional[str] = None
     ) -> str:
-        """Check room availability."""
+        """
+        Check room availability for given dates.
+        
+        Args:
+            check_in: Check-in date (YYYY-MM-DD)
+            check_out: Check-out date (YYYY-MM-DD)
+            room_type: Optional specific room type
+            
+        Returns:
+            Availability status message
+        """
         # TODO: Integrate with PMS or local database
         # For now, return mock availability
         return (
@@ -348,7 +291,18 @@ class AnaAgent:
         adults: int,
         children: int = 0
     ) -> str:
-        """Generate personalized Omnibees link for reservation."""
+        """
+        Generate personalized Omnibees link for reservation.
+        
+        Args:
+            check_in: Check-in date
+            check_out: Check-out date
+            adults: Number of adults
+            children: Number of children
+            
+        Returns:
+            Message with Omnibees link
+        """
         # TODO: Integrate with Omnibees API
         # For now, generate a mock link
         base_url = "https://booking.omnibees.com/hotelpassarim"
@@ -356,14 +310,30 @@ class AnaAgent:
         
         link = base_url + params
         
-        return OMNIBEES_LINK_MESSAGE.format(link=link)
+        return f"[[OMNIBEES_LINK:{link}]] " + OMNIBEES_LINK_MESSAGE.format(link=link)
     
     async def transfer_to_reception(self, reason: str) -> str:
-        """Transfer to reception with specific reason."""
-        return TRANSFER_TO_RECEPTION.format(reason=reason)
+        """
+        Transfer conversation to human reception staff.
+        
+        Args:
+            reason: Reason for transfer
+            
+        Returns:
+            Transfer message
+        """
+        return "[[TRANSFER_TO_RECEPTION]] " + TRANSFER_TO_RECEPTION.format(reason=reason)
     
     async def provide_hotel_info(self, info_type: str) -> str:
-        """Provide specific hotel information."""
+        """
+        Provide specific hotel information.
+        
+        Args:
+            info_type: Type of information requested (wifi, restaurant, amenities, etc)
+            
+        Returns:
+            Requested hotel information
+        """
         info_type = info_type.lower()
         
         if "wifi" in info_type or "internet" in info_type:
@@ -392,7 +362,17 @@ class AnaAgent:
         adults: int,
         children: int = 0
     ) -> str:
-        """Handle reservation for pasta rotation."""
+        """
+        Handle reservation for pasta rotation dinner.
+        
+        Args:
+            date: Reservation date
+            adults: Number of adults
+            children: Number of children
+            
+        Returns:
+            Pasta rotation reservation details
+        """
         pasta_info = PASTA_ROTATION["friday_saturday"]
         
         total_people = adults + children
@@ -412,3 +392,259 @@ class AnaAgent:
             f"O rodízio inclui antepastos, 4 tipos de ravioli, 2 tipos de rondelli "
             f"e massas com molhos artesanais! 😋"
         )
+    
+    # New tools for additional features
+    
+    async def process_check_in(
+        self,
+        guest_phone: str,
+        reservation_code: str,
+        arrival_time: Optional[str] = None
+    ) -> str:
+        """
+        Process digital check-in for guest.
+        
+        Args:
+            guest_phone: Guest's phone number
+            reservation_code: Reservation confirmation code
+            arrival_time: Expected arrival time
+            
+        Returns:
+            Check-in confirmation or form link
+        """
+        # TODO: Integrate with PMS to validate reservation
+        # For now, return check-in form link
+        check_in_link = f"{settings.webhook_base_url}/check-in/{reservation_code}"
+        
+        return (
+            f"📋 *Check-in Digital*\n\n"
+            f"Para agilizar sua chegada, complete o check-in online:\n"
+            f"🔗 {check_in_link}\n\n"
+            f"✅ Benefícios:\n"
+            f"• Chegada mais rápida\n"
+            f"• Escolha de quarto (sujeito à disponibilidade)\n"
+            f"• Documentação digital\n\n"
+            f"Horário previsto de chegada: {arrival_time or 'A definir'}"
+        )
+    
+    async def get_guest_account_statement(
+        self,
+        guest_phone: str,
+        room_number: Optional[str] = None
+    ) -> str:
+        """
+        Get current account statement for guest.
+        
+        Args:
+            guest_phone: Guest's phone number
+            room_number: Optional room number
+            
+        Returns:
+            Account statement details
+        """
+        # TODO: Integrate with PMS for real data
+        # Mock data for now
+        return (
+            f"📊 *Extrato da Conta - Quarto {room_number or '101'}*\n\n"
+            f"📅 Período: 10/01 a 12/01/2025\n\n"
+            f"*Lançamentos:*\n"
+            f"• Diárias (2x): R$ 580,00\n"
+            f"• Restaurante: R$ 127,50\n"
+            f"• Frigobar: R$ 45,00\n"
+            f"• Lavanderia: R$ 35,00\n\n"
+            f"💰 *Total: R$ 787,50*\n\n"
+            f"💳 Pagamentos realizados: R$ 580,00\n"
+            f"📍 Saldo a pagar: R$ 207,50"
+        )
+    
+    async def generate_payment_link(
+        self,
+        amount: float,
+        description: str,
+        guest_phone: str
+    ) -> str:
+        """
+        Generate payment link for services or reservations.
+        
+        Args:
+            amount: Payment amount
+            description: Payment description
+            guest_phone: Guest's phone number
+            
+        Returns:
+            Payment link and instructions
+        """
+        # TODO: Integrate with payment gateway
+        # Mock payment link for now
+        payment_id = f"PAY{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        payment_link = f"{settings.webhook_base_url}/payment/{payment_id}"
+        
+        return (
+            f"💳 *Link de Pagamento*\n\n"
+            f"📝 Descrição: {description}\n"
+            f"💰 Valor: R$ {amount:.2f}\n\n"
+            f"🔗 Link para pagamento:\n"
+            f"{payment_link}\n\n"
+            f"[[PAYMENT_LINK:{payment_link}]] "
+            f"✅ Aceitamos:\n"
+            f"• PIX (desconto de 5%)\n"
+            f"• Cartão de crédito/débito\n"
+            f"• Transferência bancária"
+        )
+    
+    async def schedule_satisfaction_survey(
+        self,
+        guest_phone: str,
+        checkout_date: str
+    ) -> str:
+        """
+        Schedule post-stay satisfaction survey.
+        
+        Args:
+            guest_phone: Guest's phone number
+            checkout_date: Guest's checkout date
+            
+        Returns:
+            Survey scheduling confirmation
+        """
+        # TODO: Integrate with survey system
+        survey_date = datetime.strptime(checkout_date, "%Y-%m-%d") + timedelta(days=1)
+        
+        return (
+            f"📋 *Pesquisa de Satisfação Agendada*\n\n"
+            f"Valorizamos sua opinião! 💝\n\n"
+            f"Enviaremos uma breve pesquisa no dia {survey_date.strftime('%d/%m/%Y')} "
+            f"para conhecer sua experiência conosco.\n\n"
+            f"Sua avaliação nos ajuda a melhorar continuamente! ⭐"
+        )
+    
+    async def send_marketing_campaign(
+        self,
+        campaign_type: str,
+        target_audience: Optional[str] = None
+    ) -> str:
+        """
+        Send marketing campaign to guests.
+        
+        Args:
+            campaign_type: Type of campaign (seasonal, promotional, etc)
+            target_audience: Optional audience filter
+            
+        Returns:
+            Campaign details
+        """
+        # TODO: Integrate with marketing automation
+        return (
+            f"📣 *Campanha de Marketing: {campaign_type}*\n\n"
+            f"🎯 Público-alvo: {target_audience or 'Todos os hóspedes'}\n\n"
+            f"📱 Canais:\n"
+            f"• WhatsApp\n"
+            f"• Email\n"
+            f"• SMS\n\n"
+            f"✅ Campanha configurada com sucesso!"
+        )
+    
+    async def update_guest_preferences(
+        self,
+        guest_phone: str,
+        preferences: Dict[str, Any]
+    ) -> str:
+        """
+        Update guest preferences for personalization.
+        
+        Args:
+            guest_phone: Guest's phone number
+            preferences: Dictionary of preferences
+            
+        Returns:
+            Confirmation message
+        """
+        # Update context preferences
+        if guest_phone in self.contexts:
+            self.contexts[guest_phone].preferences.update(preferences)
+        
+        pref_list = "\n".join([f"• {k}: {v}" for k, v in preferences.items()])
+        
+        return (
+            f"✅ *Preferências Atualizadas*\n\n"
+            f"Registramos suas preferências:\n"
+            f"{pref_list}\n\n"
+            f"Isso nos ajuda a personalizar sua experiência! 🌟"
+        )
+    
+    async def route_service_request(
+        self,
+        service_type: str,
+        details: str,
+        room_number: str
+    ) -> str:
+        """
+        Route service requests to appropriate department.
+        
+        Args:
+            service_type: Type of service (housekeeping, maintenance, etc)
+            details: Request details
+            room_number: Guest's room number
+            
+        Returns:
+            Service request confirmation
+        """
+        # Map service types to departments
+        department_map = {
+            "limpeza": "Governança",
+            "manutenção": "Manutenção",
+            "restaurante": "Restaurante",
+            "lavanderia": "Lavanderia",
+            "recepção": "Recepção"
+        }
+        
+        department = department_map.get(service_type.lower(), "Recepção")
+        request_id = f"SR{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        return (
+            f"📋 *Solicitação de Serviço #{request_id}*\n\n"
+            f"🏨 Quarto: {room_number}\n"
+            f"🔧 Tipo: {service_type}\n"
+            f"📝 Detalhes: {details}\n\n"
+            f"✅ Encaminhado para: {department}\n"
+            f"⏱️ Tempo estimado: 15-30 minutos\n\n"
+            f"Acompanhe o status enviando: STATUS {request_id}"
+        )
+    
+    async def check_payment_status(
+        self,
+        payment_id: str
+    ) -> str:
+        """
+        Check status of a payment.
+        
+        Args:
+            payment_id: Payment identifier
+            
+        Returns:
+            Payment status details
+        """
+        # TODO: Integrate with payment gateway
+        # Mock status for now
+        return (
+            f"💳 *Status do Pagamento {payment_id}*\n\n"
+            f"✅ Status: Aprovado\n"
+            f"💰 Valor: R$ 787,50\n"
+            f"📅 Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+            f"🏦 Forma: PIX\n\n"
+            f"Obrigado pelo pagamento! 😊"
+        )
+
+    # Utility methods
+    
+    def _parse_date(self, date_str: str) -> date:
+        """Parse date from string."""
+        for sep in ['/', '-']:
+            if sep in date_str:
+                parts = date_str.split(sep)
+                if len(parts) == 3:
+                    day, month, year = parts
+                    if len(year) == 2:
+                        year = f"20{year}"
+                    return date(int(year), int(month), int(day))
+        raise ValueError(f"Could not parse date: {date_str}")
