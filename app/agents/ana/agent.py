@@ -68,7 +68,6 @@ class AnaAgent:
         self.agent = Agent(
             model=Gemini(
                 id="gemini-2.0-flash",  # Recommended for most use-cases
-                api_key=api_key,
                 temperature=0.7,
                 vertexai=settings.google_genai_use_vertexai,
                 project_id=settings.google_cloud_project,
