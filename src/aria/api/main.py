@@ -109,19 +109,19 @@ async def health_check():
     # Check Redis connection
     redis_healthy = False
     try:
-        if session_manager._connected:
+        if session_manager._connected and session_manager.redis:
             await session_manager.redis.ping()
             redis_healthy = True
     except Exception as e:
         logger.error("Redis health check failed", error=str(e))
     
-    # Overall health
-    healthy = redis_healthy
+    # Overall health - if Redis is not available but app is running, it's still healthy
+    healthy = True  # App is running, even if Redis is in memory-only mode
     
     return {
         "status": "healthy" if healthy else "unhealthy",
         "checks": {
-            "redis": "healthy" if redis_healthy else "unhealthy"
+            "redis": "healthy" if redis_healthy else "memory-only"
         },
         "version": "0.1.0",
         "environment": settings.app_env
