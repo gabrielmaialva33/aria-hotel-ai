@@ -329,9 +329,10 @@ Os seguintes softwares devem estar instalados:
 
 ### Chaves API Necessárias:
 
-- **Chave API Google Gemini**
-- **SID da Conta Twilio e Token de Autenticação**
+- **Chave API Google Gemini** (obrigatória para funcionalidade IA)
+- **SID da Conta Twilio e Token de Autenticação** (obrigatório para integração WhatsApp)
 - **Número WhatsApp Business** (via Twilio)
+- **Opcional**: Chave API OpenAI, Chave API Groq, Chave API Anthropic (para modelos IA adicionais)
 
 <br>
 
