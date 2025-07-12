@@ -95,6 +95,7 @@ class AnaAgent:
                 self.route_service_request,
                 self.check_payment_status,
                 self.get_proactive_suggestions,
+                self.create_reservation,
             ],
             # Chat history configuration
             add_history_to_messages=True,
@@ -786,3 +787,44 @@ class AnaAgent:
             message += "\n"
 
         return message.strip()
+
+    async def create_reservation(
+        self,
+        check_in: str,
+        check_out: str,
+        adults: int,
+        children: List[int] = None,
+        room_type: str = None,
+        meal_plan: str = None,
+        guest_name: str = None,
+        guest_phone: str = None,
+    ) -> str:
+        """
+        Create a reservation in the database.
+
+        Args:
+            check_in: Check-in date (YYYY-MM-DD)
+            check_out: Check-out date (YYYY-MM-DD)
+            adults: Number of adults
+            children: List of children ages
+            room_type: Room type preference
+            meal_plan: Meal plan preference
+            guest_name: Guest's name
+            guest_phone: Guest's phone number
+
+        Returns:
+            Confirmation message with reservation details
+        """
+        # This is a placeholder implementation.
+        # In a real application, this would interact with a database.
+        reservation_code = f"RES-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        return (
+            f"Reserva confirmada! ✅\n\n"
+            f"Código da reserva: {reservation_code}\n"
+            f"Hóspede: {guest_name}\n"
+            f"Check-in: {check_in}\n"
+            f"Check-out: {check_out}\n"
+            f"Acomodação: {room_type}\n"
+            f"Plano de refeições: {meal_plan}\n\n"
+            f"Agradecemos a preferência! 😊"
+        )
