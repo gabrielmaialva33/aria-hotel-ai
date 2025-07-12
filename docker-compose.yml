@@ -21,7 +21,6 @@ services:
       - redis
     volumes:
       - ./logs:/app/logs
-      - ./gcloud-credentials.json:/app/gcloud-credentials.json
     restart: unless-stopped
     networks:
       - aria-network
