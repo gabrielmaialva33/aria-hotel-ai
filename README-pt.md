@@ -436,10 +436,10 @@ graph LR
 
     subgraph "Rotas API v1"
         STATS[GET /api/v1/stats]
-        RESERVATIONS[/api/v1/reservations/*]
-        SERVICES[/api/v1/services/*]
-        PAYMENTS[/api/v1/payments/*]
-        ANALYTICS[/api/v1/analytics/*]
+        RESERVATIONS[/api/v1/reservations/...]
+        SERVICES[/api/v1/services/...]
+        PAYMENTS[/api/v1/payments/...]
+        ANALYTICS[/api/v1/analytics/...]
     end
 
     style ROOT fill:#90EE90
