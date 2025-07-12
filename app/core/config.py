@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = Field(default=None, description="Groq API key")
     anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key")
     gemini_api_key: Optional[str] = Field(default=None, description="Google Gemini API key")
+    google_api_key: Optional[str] = Field(default=None, description="Google API key (for Gemini)")
 
     # Twilio Configuration
     twilio_account_sid: Optional[str] = Field(default=None, description="Twilio Account SID")
