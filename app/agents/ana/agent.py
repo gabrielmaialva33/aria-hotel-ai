@@ -134,10 +134,18 @@ class AnaAgent:
             }
             
             # Process with Agno agent
-            response_text = await self.agent.arun(
+            agent_response = await self.agent.arun(
                 message,
                 context=agno_context
             )
+            
+            # Extract text from RunResponse if needed
+            if hasattr(agent_response, 'content'):
+                response_text = agent_response.content
+            elif isinstance(agent_response, str):
+                response_text = agent_response
+            else:
+                response_text = str(agent_response)
             
             # Parse any structured actions from response
             response = self._parse_agent_response(response_text)
