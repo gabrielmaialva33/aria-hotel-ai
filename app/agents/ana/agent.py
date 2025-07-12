@@ -37,6 +37,7 @@ from app.agents.ana.prompts import (
 )
 from app.core.logging import get_logger
 from app.core.config import settings
+from app.core.utils import parse_meal_plan
 
 logger = get_logger(__name__)
 
@@ -307,13 +308,14 @@ class AnaAgent:
             check_out_date = self._parse_flexible_date(check_out)
             
             # Create reservation request
+            parsed_meal_plan = parse_meal_plan(meal_plan) if meal_plan else None
             request = ReservationRequest(
                 check_in=check_in_date,
                 check_out=check_out_date,
                 adults=adults,
                 children=children or [],
                 room_type=RoomType(room_type) if room_type else None,
-                meal_plan=MealPlan(meal_plan) if meal_plan else None,
+                meal_plan=parsed_meal_plan,
                 is_holiday=bool(is_holiday_period(check_in_date, check_out_date))
             )
             
