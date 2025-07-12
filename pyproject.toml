@@ -76,10 +76,10 @@ docs = [
 aria = "app.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/gabrielmaialv33/aria-hotel-ai"
+Homepage = "https://github.com/gabrielmaialva33/aria-hotel-ai"
 Documentation = "https://aria-hotel-ai.readthedocs.io"
-Repository = "https://github.com/gabrielmaialv33/aria-hotel-ai"
-Issues = "https://github.com/gabrielmaialv33/aria-hotel-ai/issues"
+Repository = "https://github.com/gabrielmaialva33/aria-hotel-ai"
+Issues = "https://github.com/gabrielmaialva33/aria-hotel-ai/issues"
 
 [build-system]
 requires = ["hatchling"]
