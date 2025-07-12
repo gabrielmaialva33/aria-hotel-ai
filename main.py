@@ -18,7 +18,7 @@ def main():
         host=settings.api_host,
         port=settings.api_port
     )
-    
+
     uvicorn.run(
         "app.api.main:app",
         host=settings.api_host,

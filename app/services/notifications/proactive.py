@@ -1,21 +1,20 @@
 """Proactive notification system for guest engagement."""
 
 import asyncio
-from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from enum import Enum
-from abc import ABC, abstractmethod
+from typing import Dict, List, Optional, Callable
 
+from app.core.database.models import Reservation, Guest, Message
+from app.core.database.session import get_db
 from celery import Celery
 from sqlalchemy import select
 
+from app.agents.ana.improved_agent import ImprovedAnaAgent
 from app.core.logging import get_logger
-from app.core.database.models import Reservation, Guest, Message
-from app.core.database.session import get_db
 from app.core.memory.vector_store import get_memory_store
 from app.integrations.whatsapp import WhatsAppClient
-from app.agents.ana.improved_agent import ImprovedAnaAgent
 
 logger = get_logger(__name__)
 
@@ -62,7 +61,7 @@ class ScheduledNotification:
 
 class NotificationEngine:
     """Engine for managing proactive notifications."""
-    
+
     def __init__(self):
         """Initialize notification engine."""
         self.rules: List[NotificationRule] = []
@@ -70,23 +69,23 @@ class NotificationEngine:
         self.ana_agent = ImprovedAnaAgent()
         self.memory_store = None
         self._initialized = False
-        
+
         # Register default rules
         self._register_default_rules()
-    
+
     async def initialize(self):
         """Initialize connections and load rules."""
         if self._initialized:
             return
-        
+
         try:
             self.memory_store = await get_memory_store()
             self._initialized = True
             logger.info("Notification engine initialized", rules_count=len(self.rules))
-            
+
         except Exception as e:
             logger.error("Failed to initialize notification engine", error=str(e))
-    
+
     def _register_default_rules(self):
         """Register default notification rules."""
         # Pre-arrival (1 day before)
@@ -106,7 +105,7 @@ class NotificationEngine:
             ),
             priority=8
         ))
-        
+
         # Day of arrival
         self.add_rule(NotificationRule(
             name="arrival_day_welcome",
@@ -122,7 +121,7 @@ class NotificationEngine:
             ),
             priority=7
         ))
-        
+
         # Welcome upon check-in
         self.add_rule(NotificationRule(
             name="welcome_message",
@@ -139,7 +138,7 @@ class NotificationEngine:
             ),
             priority=9
         ))
-        
+
         # During stay - suggest activities
         self.add_rule(NotificationRule(
             name="activity_suggestion",
@@ -153,7 +152,7 @@ class NotificationEngine:
             priority=5,
             metadata={"time_of_day": "morning"}
         ))
-        
+
         # Pre-departure
         self.add_rule(NotificationRule(
             name="checkout_reminder",
@@ -169,7 +168,7 @@ class NotificationEngine:
             ),
             priority=7
         ))
-        
+
         # Post-departure feedback
         self.add_rule(NotificationRule(
             name="feedback_request",
@@ -185,12 +184,13 @@ class NotificationEngine:
             ),
             priority=6
         ))
-        
+
         # Birthday greetings
         self.add_rule(NotificationRule(
             name="birthday_greeting",
             trigger_type=TriggerType.BIRTHDAY,
-            condition=lambda g: g.birthdate and g.birthdate.month == date.today().month and g.birthdate.day == date.today().day,
+            condition=lambda
+                g: g.birthdate and g.birthdate.month == date.today().month and g.birthdate.day == date.today().day,
             template=(
                 "🎂 Feliz Aniversário, {name}! 🎉\n\n"
                 "O Hotel Passarim deseja um dia repleto de alegrias!\n\n"
@@ -203,7 +203,7 @@ class NotificationEngine:
             ),
             priority=8
         ))
-        
+
         # Weather-based suggestions
         self.add_rule(NotificationRule(
             name="rainy_day_activity",
@@ -220,7 +220,7 @@ class NotificationEngine:
             ),
             priority=4
         ))
-        
+
         # Special offers for returning guests
         self.add_rule(NotificationRule(
             name="returning_guest_offer",
@@ -238,33 +238,33 @@ class NotificationEngine:
             ),
             priority=6
         ))
-    
+
     def add_rule(self, rule: NotificationRule):
         """Add a notification rule."""
         self.rules.append(rule)
         logger.info("Notification rule added", rule_name=rule.name)
-    
+
     async def check_and_schedule_notifications(self):
         """Check all rules and schedule notifications as needed."""
         logger.info("Checking notification rules")
-        
+
         scheduled_count = 0
-        
+
         async with get_db() as db:
             # Check pre-arrival and arrival rules
             await self._check_reservation_rules(db)
-            
+
             # Check guest-based rules (birthdays, loyalty)
             await self._check_guest_rules(db)
-            
+
             # Check weather-based rules
             await self._check_weather_rules(db)
-            
+
             # Check special offers
             await self._check_special_offer_rules(db)
-        
+
         logger.info("Notification check complete", scheduled=scheduled_count)
-    
+
     async def _check_reservation_rules(self, db):
         """Check rules related to reservations."""
         # Get relevant reservations
@@ -274,19 +274,19 @@ class NotificationEngine:
             .where(Reservation.check_in >= date.today() - timedelta(days=1))
             .where(Reservation.check_in <= date.today() + timedelta(days=7))
         )
-        
+
         reservations = result.scalars().all()
-        
+
         for reservation in reservations:
             # Get guest info
             guest_result = await db.execute(
                 select(Guest).where(Guest.id == reservation.guest_id)
             )
             guest = guest_result.scalar_one_or_none()
-            
+
             if not guest:
                 continue
-            
+
             # Check each reservation-based rule
             for rule in self.rules:
                 if rule.trigger_type in [
@@ -303,21 +303,21 @@ class NotificationEngine:
                             reservation=reservation,
                             rule=rule
                         )
-    
+
     async def _check_guest_rules(self, db):
         """Check rules related to guest attributes."""
         # Get guests with birthdays this week
         today = date.today()
         week_later = today + timedelta(days=7)
-        
+
         # This query would need to be adjusted for birthday checking
         result = await db.execute(
             select(Guest)
             .where(Guest.metadata["birthdate"].isnot(None))
         )
-        
+
         guests = result.scalars().all()
-        
+
         for guest in guests:
             for rule in self.rules:
                 if rule.trigger_type == TriggerType.BIRTHDAY:
@@ -327,12 +327,12 @@ class NotificationEngine:
                             reservation=None,
                             rule=rule
                         )
-    
+
     async def _check_weather_rules(self, db):
         """Check weather-based rules."""
         # Get current weather (mock for now)
         weather = await self._get_weather()
-        
+
         if weather.get("rain") or weather.get("cold"):
             # Get current guests
             result = await db.execute(
@@ -341,15 +341,15 @@ class NotificationEngine:
                 .where(Reservation.check_in <= date.today())
                 .where(Reservation.check_out >= date.today())
             )
-            
+
             current_stays = result.scalars().all()
-            
+
             for reservation in current_stays:
                 guest_result = await db.execute(
                     select(Guest).where(Guest.id == reservation.guest_id)
                 )
                 guest = guest_result.scalar_one_or_none()
-                
+
                 if guest:
                     for rule in self.rules:
                         if rule.trigger_type == TriggerType.WEATHER_BASED:
@@ -360,7 +360,7 @@ class NotificationEngine:
                                     rule=rule,
                                     additional_context={"weather": weather}
                                 )
-    
+
     async def _check_special_offer_rules(self, db):
         """Check special offer rules."""
         # Get guests for special offers
@@ -368,40 +368,40 @@ class NotificationEngine:
             select(Guest)
             .where(Guest.metadata["total_stays"].astext.cast(Integer) > 1)
         )
-        
+
         eligible_guests = result.scalars().all()
-        
+
         for guest in eligible_guests:
             # Get guest profile from memory store
             if self.memory_store:
                 profile = await self.memory_store.get_guest_profile(str(guest.id))
-                
+
                 for rule in self.rules:
                     if rule.trigger_type == TriggerType.SPECIAL_OFFER:
                         # Add profile data to guest object for condition check
                         guest.total_stays = profile["total_interactions"]
                         # Calculate last stay (would need proper implementation)
                         guest.last_stay = date.today() - timedelta(days=90)
-                        
+
                         if rule.enabled and rule.condition(guest):
                             await self._schedule_notification(
                                 guest=guest,
                                 reservation=None,
                                 rule=rule
                             )
-    
+
     async def _schedule_notification(
-        self,
-        guest: Guest,
-        reservation: Optional[Reservation],
-        rule: NotificationRule,
-        additional_context: Optional[Dict] = None
+            self,
+            guest: Guest,
+            reservation: Optional[Reservation],
+            rule: NotificationRule,
+            additional_context: Optional[Dict] = None
     ):
         """Schedule a notification to be sent."""
         # Check if already scheduled
         if await self._is_already_scheduled(guest.id, rule.name):
             return
-        
+
         # Prepare context for template
         context = {
             "name": guest.name.split()[0],  # First name
@@ -413,16 +413,16 @@ class NotificationEngine:
             "suggestion": self._get_activity_suggestion(guest, reservation),
             "days_since": 90  # Would calculate properly
         }
-        
+
         if additional_context:
             context.update(additional_context)
-        
+
         # Format message
         message = rule.template.format(**context)
-        
+
         # Determine send time
         send_time = self._determine_send_time(rule, guest)
-        
+
         # Create scheduled notification
         notification = ScheduledNotification(
             id=f"{guest.id}_{rule.name}_{date.today()}",
@@ -436,26 +436,26 @@ class NotificationEngine:
                 "reservation_id": str(reservation.id) if reservation else None
             }
         )
-        
+
         # Save to database/queue
         await self._save_scheduled_notification(notification)
-        
+
         logger.info(
             "Notification scheduled",
             guest_id=guest.id,
             rule=rule.name,
             send_time=send_time
         )
-    
+
     async def send_scheduled_notifications(self):
         """Send all pending scheduled notifications."""
         # Get pending notifications
         pending = await self._get_pending_notifications()
-        
+
         for notification in pending:
             if notification.scheduled_time <= datetime.now():
                 await self._send_notification(notification)
-    
+
     async def _send_notification(self, notification: ScheduledNotification):
         """Send a single notification."""
         try:
@@ -465,7 +465,7 @@ class NotificationEngine:
                     select(Guest).where(Guest.id == notification.guest_id)
                 )
                 guest = result.scalar_one_or_none()
-                
+
                 if not guest or not guest.phone:
                     logger.warning(
                         "Cannot send notification - no phone",
@@ -474,13 +474,13 @@ class NotificationEngine:
                     notification.status = "failed"
                     await self._update_notification_status(notification)
                     return
-            
+
             # Send via WhatsApp
             message_sid = await self.whatsapp_client.send_message(
                 to=guest.phone,
                 body=notification.message
             )
-            
+
             # Record in memory store
             if self.memory_store:
                 await self.memory_store.add_memory(
@@ -492,17 +492,17 @@ class NotificationEngine:
                         "message_sid": message_sid
                     }
                 )
-            
+
             # Update status
             notification.status = "sent"
             await self._update_notification_status(notification)
-            
+
             logger.info(
                 "Notification sent",
                 guest_id=notification.guest_id,
                 rule=notification.rule_name
             )
-            
+
         except Exception as e:
             logger.error(
                 "Failed to send notification",
@@ -511,11 +511,11 @@ class NotificationEngine:
             )
             notification.status = "failed"
             await self._update_notification_status(notification)
-    
+
     def _determine_send_time(self, rule: NotificationRule, guest: Guest) -> datetime:
         """Determine optimal send time based on rule and guest preferences."""
         now = datetime.now()
-        
+
         # Default send times by rule type
         default_times = {
             TriggerType.PRE_ARRIVAL: now.replace(hour=10, minute=0),
@@ -528,24 +528,24 @@ class NotificationEngine:
             TriggerType.SPECIAL_OFFER: now.replace(hour=11, minute=0),
             TriggerType.WEATHER_BASED: now.replace(hour=8, minute=30)
         }
-        
+
         send_time = default_times.get(rule.trigger_type, now)
-        
+
         # Adjust based on guest timezone if available
         # TODO: Implement timezone handling
-        
+
         # Don't send too early or too late
         if send_time.hour < 8:
             send_time = send_time.replace(hour=8)
         elif send_time.hour > 20:
             send_time = send_time.replace(hour=20)
-        
+
         # If time has passed today, send tomorrow
         if send_time < now and rule.trigger_type != TriggerType.WELCOME:
             send_time += timedelta(days=1)
-        
+
         return send_time
-    
+
     def _get_activity_suggestion(self, guest: Guest, reservation: Optional[Reservation]) -> str:
         """Get personalized activity suggestion."""
         suggestions = [
@@ -555,11 +555,11 @@ class NotificationEngine:
             "🚶 Trilha ecológica saindo às 8h30. Quer participar?",
             "🧘 Aula de yoga no jardim às 7h. Começe o dia com energia!"
         ]
-        
+
         # TODO: Personalize based on guest preferences from memory store
         import random
         return random.choice(suggestions)
-    
+
     async def _get_weather(self) -> Dict:
         """Get current weather (mock for now)."""
         # TODO: Integrate with weather API
@@ -569,22 +569,22 @@ class NotificationEngine:
             "condition": random.choice(["sunny", "cloudy", "rainy"]),
             "rain": random.random() > 0.7
         }
-    
+
     async def _is_already_scheduled(self, guest_id: str, rule_name: str) -> bool:
         """Check if notification is already scheduled."""
         # TODO: Implement database check
         return False
-    
+
     async def _save_scheduled_notification(self, notification: ScheduledNotification):
         """Save scheduled notification to database."""
         # TODO: Implement database save
         pass
-    
+
     async def _get_pending_notifications(self) -> List[ScheduledNotification]:
         """Get pending notifications from database."""
         # TODO: Implement database query
         return []
-    
+
     async def _update_notification_status(self, notification: ScheduledNotification):
         """Update notification status in database."""
         # TODO: Implement database update
@@ -598,22 +598,24 @@ app = Celery('aria.notifications')
 @app.task
 def check_notifications():
     """Celery task to check and schedule notifications."""
+
     async def run():
         engine = NotificationEngine()
         await engine.initialize()
         await engine.check_and_schedule_notifications()
-    
+
     asyncio.run(run())
 
 
 @app.task
 def send_notifications():
     """Celery task to send scheduled notifications."""
+
     async def run():
         engine = NotificationEngine()
         await engine.initialize()
         await engine.send_scheduled_notifications()
-    
+
     asyncio.run(run())
 
 

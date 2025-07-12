@@ -3,10 +3,10 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
 
 from app.api.webhooks import whatsapp
@@ -25,23 +25,23 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
     logger.info("Starting ARIA Hotel AI", version="0.1.0")
-    
+
     # Connect to Redis
     await session_manager.connect()
-    
+
     # TODO: Initialize other services
     # - Database connections
     # - Background tasks
     # - Agent warmup
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down ARIA Hotel AI")
-    
+
     # Cleanup
     await session_manager.disconnect()
-    
+
     # TODO: Cleanup other services
 
 
@@ -79,6 +79,7 @@ app.mount("/metrics", metrics_app)
 # Include routers
 app.include_router(whatsapp.router)
 
+
 # TODO: Add more routers
 # app.include_router(voice.router)
 # app.include_router(reservations.router, prefix="/api/v1")
@@ -114,10 +115,10 @@ async def health_check():
             redis_healthy = True
     except Exception as e:
         logger.error("Redis health check failed", error=str(e))
-    
+
     # Overall health - if Redis is not available but app is running, it's still healthy
     healthy = True  # App is running, even if Redis is in memory-only mode
-    
+
     return {
         "status": "healthy" if healthy else "unhealthy",
         "checks": {
@@ -132,7 +133,7 @@ async def health_check():
 async def get_stats():
     """Get application statistics."""
     active_sessions = await session_manager.get_active_sessions_count()
-    
+
     return {
         "active_sessions": active_sessions,
         "environment": settings.app_env,
@@ -166,7 +167,7 @@ async def internal_error_handler(request: Request, exc):
         path=str(request.url.path),
         error=str(exc)
     )
-    
+
     return JSONResponse(
         status_code=500,
         content={
@@ -178,7 +179,7 @@ async def internal_error_handler(request: Request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "aria.api.main:app",
         host=settings.api_host,

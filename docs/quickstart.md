@@ -12,12 +12,14 @@
 ### Instalação Rápida
 
 1. **Clone o repositório**
+
 ```bash
-git clone https://github.com/gabrielmaialv33/aria-hotel-ai.git
+git clone https://github.com/gabrielmaialva33/aria-hotel-ai.git
 cd aria-hotel-ai
 ```
 
 2. **Configure o ambiente**
+
 ```bash
 # Copie o arquivo de exemplo
 cp .env.example .env
@@ -29,11 +31,13 @@ nano .env
 3. **Inicie o sistema**
 
 **Opção 1: Desenvolvimento Local**
+
 ```bash
 ./scripts/start.sh
 ```
 
 **Opção 2: Docker**
+
 ```bash
 ./scripts/docker-start.sh
 ```
@@ -54,6 +58,7 @@ nano .env
 ### 2. Obtenha as Credenciais
 
 No arquivo `.env`, configure:
+
 ```env
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -98,11 +103,13 @@ curl -X POST http://localhost:8000/webhooks/whatsapp/test \
 ## 📊 Monitoramento
 
 ### Grafana Dashboard
+
 - Acesse: http://localhost:3000
 - Login: admin/admin
 - Dashboard pré-configurado com métricas
 
 ### Logs
+
 ```bash
 # Logs em tempo real (Docker)
 docker-compose logs -f aria-api
@@ -152,6 +159,7 @@ uv run pytest --cov
 ## 🛠️ Troubleshooting
 
 ### Redis não está rodando
+
 ```bash
 # macOS
 brew services start redis
@@ -164,11 +172,13 @@ docker run -d -p 6379:6379 redis:alpine
 ```
 
 ### Erro de API Key
+
 - Verifique se as chaves no `.env` estão corretas
 - Para Groq (gratuito): https://console.groq.com/keys
 - Para OpenAI: https://platform.openai.com/api-keys
 
 ### WhatsApp não responde
+
 1. Verifique se o webhook está acessível publicamente
 2. Use ngrok para testes locais:
    ```bash
@@ -194,5 +204,5 @@ docker run -d -p 6379:6379 redis:alpine
 ## 🆘 Suporte
 
 - Documentação: [/docs](/docs)
-- Issues: [GitHub Issues](https://github.com/gabrielmaialv33/aria-hotel-ai/issues)
+- Issues: [GitHub Issues](https://github.com/gabrielmaialva33/aria-hotel-ai/issues)
 - Email: suporte@aria-hotel-ai.com

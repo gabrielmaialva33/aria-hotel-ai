@@ -1,7 +1,7 @@
 """Knowledge base for Hotel Passarim - Ana's core information."""
 
 from datetime import date
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 # Hotel basic information
 HOTEL_INFO = {
@@ -195,7 +195,7 @@ HOLIDAY_PACKAGES = {
         "min_nights": 3
     },
     "ano_novo": {
-        "name": "Pacote de Ano Novo", 
+        "name": "Pacote de Ano Novo",
         "start_date": date(2025, 12, 29),
         "end_date": date(2026, 1, 2),
         "min_nights": 3
@@ -227,7 +227,7 @@ ROOM_DESCRIPTIONS = {
             "Ar-condicionado quente e frio",
             "Wi-Fi",
             "TV a cabo",
-            "Frigobar", 
+            "Frigobar",
             "Mesa com duas cadeiras",
             "Cadeira de balanço",
             "Cama box",

@@ -18,6 +18,7 @@ O ARIA Hotel AI é um sistema completo de concierge com IA multimodal para hoté
 ### 1. **Core AI System**
 
 #### NLP Avançado (`nlp_processor.py`)
+
 ```python
 from aria.agents.ana.nlp_processor import NLPProcessor
 
@@ -33,6 +34,7 @@ result = await nlp.process("Quero reservar para páscoa, 2 adultos")
 ```
 
 #### Vision Processing (`vision_processor.py`)
+
 ```python
 from aria.tools.vision_processor import VisionProcessor
 
@@ -47,6 +49,7 @@ result = await vision.process_image("https://example.com/cpf.jpg")
 ```
 
 #### Agent Melhorado (`improved_agent.py`)
+
 ```python
 from aria.agents.ana.improved_agent import ImprovedAnaAgent
 
@@ -67,6 +70,7 @@ response = await agent.process_message(
 ### 2. **Payment System** 💳
 
 #### Gateway Unificado (`payments/gateway.py`)
+
 ```python
 from aria.payments.gateway import get_payment_gateway, PaymentRequest
 
@@ -87,12 +91,14 @@ response = await gateway.create_pix_payment(
 ```
 
 **Providers Suportados:**
+
 - **Stripe**: Cartões internacionais
 - **MercadoPago**: PIX, cartões nacionais, boleto
 
 ### 3. **Security & Auth** 🔐
 
 #### Sistema de Autenticação (`auth/security.py`)
+
 ```python
 from aria.auth.security import AuthService, require_permissions, UserRole
 
@@ -100,13 +106,15 @@ from aria.auth.security import AuthService, require_permissions, UserRole
 auth = AuthService()
 token = auth.create_access_token(user)
 
+
 # Proteger endpoints
 @router.post("/refund")
 async def issue_refund(
-    user = Depends(require_permissions(Permission.ISSUE_REFUNDS))
+        user=Depends(require_permissions(Permission.ISSUE_REFUNDS))
 ):
     # Apenas usuários com permissão podem acessar
     pass
+
 
 # Rate limiting
 @router.get("/api/data", dependencies=[Depends(RateLimiter(max_requests=100))])
@@ -115,6 +123,7 @@ async def protected_endpoint():
 ```
 
 **Features:**
+
 - JWT com refresh tokens
 - RBAC (Role-Based Access Control)
 - API Keys para integrações
@@ -124,12 +133,14 @@ async def protected_endpoint():
 ### 4. **Observability** 📊
 
 #### Monitoramento Completo (`observability/monitoring.py`)
+
 ```python
 from aria.observability.monitoring import (
     monitor_async,
     setup_monitoring,
     metrics_collector
 )
+
 
 # Decorador para monitorar funções
 @monitor_async(name="process_reservation")
@@ -140,6 +151,7 @@ async def process_reservation(data):
     # - Captura erros
     pass
 
+
 # Métricas customizadas
 metrics_collector.record_payment(
     provider="mercadopago",
@@ -149,6 +161,7 @@ metrics_collector.record_payment(
 ```
 
 **Integrações:**
+
 - **OpenTelemetry**: Distributed tracing
 - **Prometheus**: Métricas
 - **Sentry**: Error tracking
@@ -157,6 +170,7 @@ metrics_collector.record_payment(
 ### 5. **Message Templates** 📝
 
 #### Sistema de Templates (`messaging/templates.py`)
+
 ```python
 from aria.messaging.templates import get_template_engine, TemplateChannel
 
@@ -181,6 +195,7 @@ result = engine.render(
 ```
 
 **Templates Incluídos:**
+
 - Boas-vindas e saudações
 - Confirmação de reserva
 - Check-in digital
@@ -192,6 +207,7 @@ result = engine.render(
 ### 6. **Proactive Notifications** 🔔
 
 #### Sistema de Notificações (`notifications/proactive.py`)
+
 ```python
 from aria.core.notifications.proactive import NotificationEngine
 
@@ -212,6 +228,7 @@ await engine.check_and_schedule_notifications()
 ### 7. **Domain-Driven Design** 🏛️
 
 #### Value Objects
+
 ```python
 from aria.domain.shared.value_objects import Email, Phone, Money, Document
 
@@ -230,6 +247,7 @@ cpf = Document(type="cpf", number="123.456.789-00")
 ```
 
 #### Entities & Aggregates
+
 ```python
 from aria.domain.guest.entities import Guest
 from aria.domain.reservation.entities import Reservation
@@ -249,6 +267,7 @@ guest.earn_loyalty_points(100, "reservation")  # Dispara PointsEarned
 ### 8. **Analytics Dashboard** 📈
 
 #### Real-time Analytics (`analytics/dashboard.py`)
+
 ```python
 from aria.analytics.dashboard import AnalyticsDashboard
 
@@ -266,6 +285,7 @@ metrics = await dashboard.get_dashboard_metrics()
 ### 9. **Memory System** 🧠
 
 #### Vector Store (`memory/vector_store.py`)
+
 ```python
 from aria.core.memory.vector_store import get_memory_store
 
@@ -390,35 +410,35 @@ spec:
         app: aria-hotel-ai
     spec:
       containers:
-      - name: aria
-        image: aria-hotel-ai:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: APP_ENV
-          value: "production"
-        envFrom:
-        - secretRef:
-            name: aria-secrets
-        resources:
-          requests:
-            memory: "2Gi"
-            cpu: "1"
-          limits:
-            memory: "4Gi"
-            cpu: "2"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: aria
+          image: aria-hotel-ai:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_ENV
+              value: "production"
+          envFrom:
+            - secretRef:
+                name: aria-secrets
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1"
+            limits:
+              memory: "4Gi"
+              cpu: "2"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
 ---
 apiVersion: v1
 kind: Service
@@ -428,8 +448,8 @@ spec:
   selector:
     app: aria-hotel-ai
   ports:
-  - port: 80
-    targetPort: 8000
+    - port: 80
+      targetPort: 8000
   type: LoadBalancer
 ```
 
@@ -441,43 +461,43 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Run tests
-      run: |
-        docker-compose -f docker-compose.test.yml up --abort-on-container-exit
-        
-    - name: Security scan
-      uses: snyk/actions/python@master
-      with:
-        args: --severity-threshold=high
+      - uses: actions/checkout@v3
+
+      - name: Run tests
+        run: |
+          docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+
+      - name: Security scan
+        uses: snyk/actions/python@master
+        with:
+          args: --severity-threshold=high
 
   build:
     needs: test
     runs-on: ubuntu-latest
     steps:
-    - name: Build and push Docker image
-      env:
-        DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-      run: |
-        docker build -t $DOCKER_REGISTRY/aria-hotel-ai:${{ github.sha }} .
-        docker push $DOCKER_REGISTRY/aria-hotel-ai:${{ github.sha }}
+      - name: Build and push Docker image
+        env:
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+        run: |
+          docker build -t $DOCKER_REGISTRY/aria-hotel-ai:${{ github.sha }} .
+          docker push $DOCKER_REGISTRY/aria-hotel-ai:${{ github.sha }}
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Deploy to Kubernetes
-      run: |
-        kubectl set image deployment/aria-hotel-ai \
-          aria=$DOCKER_REGISTRY/aria-hotel-ai:${{ github.sha }}
-        kubectl rollout status deployment/aria-hotel-ai
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/aria-hotel-ai \
+            aria=$DOCKER_REGISTRY/aria-hotel-ai:${{ github.sha }}
+          kubectl rollout status deployment/aria-hotel-ai
 ```
 
 ## 📊 Monitoramento em Produção
@@ -524,13 +544,13 @@ groups:
     for: 5m
     annotations:
       summary: "High error rate detected"
-      
+
   - alert: LowAIResolution
     expr: aria_ai_resolution_rate < 0.7
     for: 10m
     annotations:
       summary: "AI resolution rate below 70%"
-      
+
   - alert: PaymentFailures
     expr: rate(aria_payment_transactions_total{status="failed"}[5m]) > 0.1
     for: 5m
@@ -554,12 +574,14 @@ groups:
 ## 📈 Métricas de Sucesso
 
 ### KPIs Técnicos
+
 - **Uptime**: > 99.95%
 - **Latência P95**: < 500ms
 - **Taxa de Erro**: < 0.1%
 - **Resolução por IA**: > 85%
 
 ### KPIs de Negócio
+
 - **Taxa de Conversão**: +25%
 - **NPS**: > 70
 - **Tempo de Resposta**: < 30s
@@ -570,18 +592,21 @@ groups:
 ### Problemas Comuns
 
 #### 1. Rate Limit Exceeded
+
 ```python
 # Aumentar limite para usuário específico
 await auth_service.redis_client.delete(f"rate_limit:{user_id}")
 ```
 
 #### 2. Memory Store Lento
+
 ```python
 # Rebuild índice FAISS
 await memory_store._rebuild_index()
 ```
 
 #### 3. Pagamento PIX Não Aparece
+
 ```bash
 # Verificar webhook MercadoPago
 curl -X POST https://api.mercadopago.com/v1/webhooks/test \
@@ -591,7 +616,7 @@ curl -X POST https://api.mercadopago.com/v1/webhooks/test \
 ## 📞 Suporte e Contato
 
 - **Documentação**: https://aria-hotel-ai.readthedocs.io
-- **Issues**: https://github.com/gabrielmaialv33/aria-hotel-ai/issues
+- **Issues**: https://github.com/gabrielmaialva33/aria-hotel-ai/issues
 - **Email**: support@aria-hotel-ai.com
 - **Discord**: https://discord.gg/aria-hotel-ai
 

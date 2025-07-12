@@ -1,15 +1,16 @@
 """Message template system for consistent communication."""
 
-import re
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Union
-from enum import Enum
-from dataclasses import dataclass, field
-from jinja2 import Environment, Template, select_autoescape, TemplateError
 import json
+import re
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from app.domain.shared.value_objects import Money
+from jinja2 import Environment, Template, select_autoescape, TemplateError
 
 from app.core.logging import get_logger
-from app.domain.shared.value_objects import Money
 
 logger = get_logger(__name__)
 
@@ -51,27 +52,27 @@ class MessageTemplate:
     variables: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     is_active: bool = True
-    
+
     def __post_init__(self):
         """Extract variables from template."""
         if not self.variables:
             self.variables = self._extract_variables()
-    
+
     def _extract_variables(self) -> List[str]:
         """Extract Jinja2 variables from template."""
         # Pattern to match {{ variable }} or {% ... %}
         pattern = r'\{\{[\s]*(\w+)[\s]*\}\}'
         variables = re.findall(pattern, self.body)
-        
+
         if self.subject:
             variables.extend(re.findall(pattern, self.subject))
-        
+
         return list(set(variables))
 
 
 class TemplateEngine:
     """Template rendering engine with Jinja2."""
-    
+
     def __init__(self):
         """Initialize template engine."""
         self.env = Environment(
@@ -79,19 +80,19 @@ class TemplateEngine:
             trim_blocks=True,
             lstrip_blocks=True
         )
-        
+
         # Add custom filters
         self.env.filters['currency'] = self._format_currency
         self.env.filters['date'] = self._format_date
         self.env.filters['phone'] = self._format_phone
         self.env.filters['title_case'] = lambda s: s.title() if s else ""
-        
+
         # Template storage (in production, use database)
         self.templates: Dict[str, MessageTemplate] = {}
-        
+
         # Load default templates
         self._load_default_templates()
-    
+
     def _load_default_templates(self):
         """Load default message templates."""
         # Welcome message
@@ -114,7 +115,7 @@ Como posso ajudar você hoje?
 
 É só me enviar uma mensagem! 😊"""
         ))
-        
+
         # Reservation confirmation
         self.add_template(MessageTemplate(
             id="reservation_confirmed",
@@ -151,7 +152,7 @@ Qualquer dúvida, é só me chamar!
 
 Estamos ansiosos para recebê-lo(a)! 🏨✨"""
         ))
-        
+
         # Pre-arrival reminder
         self.add_template(MessageTemplate(
             id="pre_arrival",
@@ -185,7 +186,7 @@ Precisa de algo antes da chegada? É só me chamar!
 
 Até amanhã! 😊"""
         ))
-        
+
         # Check-in digital
         self.add_template(MessageTemplate(
             id="digital_checkin",
@@ -218,7 +219,7 @@ Dúvidas? Me chame! 💬""",
                 {"type": "url", "text": "Fazer Check-in", "url": "{{ checkin_link }}"}
             ]
         ))
-        
+
         # Payment PIX
         self.add_template(MessageTemplate(
             id="payment_pix",
@@ -248,7 +249,7 @@ Dúvidas? Me chame! 💬""",
 ⚠️ Importante: O QR Code expira em {{ expiration_minutes }} minutos.""",
             media_urls=["{{ qr_code_url }}"]
         ))
-        
+
         # Room upgrade offer
         self.add_template(MessageTemplate(
             id="room_upgrade_offer",
@@ -279,7 +280,7 @@ Aceita? Responda com:
 2️⃣ Não, obrigado
 3️⃣ Quero saber mais"""
         ))
-        
+
         # Feedback request
         self.add_template(MessageTemplate(
             id="feedback_request",
@@ -314,7 +315,7 @@ Muito obrigado! 💚
                 {"type": "url", "text": "Avaliar Agora", "url": "{{ feedback_link }}"}
             ]
         ))
-        
+
         # Error message
         self.add_template(MessageTemplate(
             id="error_generic",
@@ -338,7 +339,7 @@ Se o problema persistir, vou transferir você para nossa equipe.
 
 Desculpe pelo transtorno! 🙏"""
         ))
-        
+
         # Restaurant reservation
         self.add_template(MessageTemplate(
             id="restaurant_reservation",
@@ -372,7 +373,7 @@ Alguma restrição alimentar ou pedido especial? Me avise!
 
 Bom apetite! 🍴"""
         ))
-        
+
         # Weather alert
         self.add_template(MessageTemplate(
             id="weather_alert",
@@ -400,23 +401,23 @@ Precisa de guarda-chuva? Temos na recepção! ☂️
 
 Qualquer coisa, é só chamar! 😊"""
         ))
-    
+
     def add_template(self, template: MessageTemplate) -> bool:
         """Add or update a template."""
         try:
             # Validate template syntax
             self._validate_template(template)
-            
+
             # Store template
             self.templates[template.id] = template
-            
+
             logger.info(
                 "Template added/updated",
                 template_id=template.id,
                 name=template.name
             )
             return True
-            
+
         except Exception as e:
             logger.error(
                 "Failed to add template",
@@ -424,28 +425,28 @@ Qualquer coisa, é só chamar! 😊"""
                 error=str(e)
             )
             return False
-    
+
     def _validate_template(self, template: MessageTemplate):
         """Validate template syntax."""
         try:
             # Test render with dummy data
             dummy_context = {var: f"test_{var}" for var in template.variables}
-            
+
             # Validate body
             Template(template.body).render(**dummy_context)
-            
+
             # Validate subject if present
             if template.subject:
                 Template(template.subject).render(**dummy_context)
-            
+
         except TemplateError as e:
             raise ValueError(f"Invalid template syntax: {e}")
-    
+
     def render(
-        self,
-        template_id: str,
-        context: Dict[str, Any],
-        channel: Optional[TemplateChannel] = None
+            self,
+            template_id: str,
+            context: Dict[str, Any],
+            channel: Optional[TemplateChannel] = None
     ) -> Dict[str, Any]:
         """
         Render a template with context.
@@ -461,39 +462,39 @@ Qualquer coisa, é só chamar! 😊"""
         template = self.templates.get(template_id)
         if not template:
             raise ValueError(f"Template not found: {template_id}")
-        
+
         if not template.is_active:
             raise ValueError(f"Template is inactive: {template_id}")
-        
+
         # Check channel compatibility
         if channel and channel not in template.channels:
             raise ValueError(
                 f"Template {template_id} doesn't support channel {channel.value}"
             )
-        
+
         try:
             # Create Jinja2 template
             body_template = self.env.from_string(template.body)
-            
+
             # Render body
             rendered_body = body_template.render(**context)
-            
+
             # Apply channel-specific formatting
             if channel:
                 rendered_body = self._format_for_channel(rendered_body, channel)
-            
+
             # Build response
             result = {
                 "body": rendered_body,
                 "media_urls": [],
                 "buttons": template.buttons.copy()
             }
-            
+
             # Render subject if present
             if template.subject:
                 subject_template = self.env.from_string(template.subject)
                 result["subject"] = subject_template.render(**context)
-            
+
             # Render media URLs
             for media_url in template.media_urls:
                 if "{{" in media_url:
@@ -502,15 +503,15 @@ Qualquer coisa, é só chamar! 😊"""
                     result["media_urls"].append(rendered_url)
                 else:
                     result["media_urls"].append(media_url)
-            
+
             # Render button URLs
             for button in result["buttons"]:
                 if "url" in button and "{{" in button["url"]:
                     url_template = self.env.from_string(button["url"])
                     button["url"] = url_template.render(**context)
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(
                 "Template rendering failed",
@@ -518,21 +519,21 @@ Qualquer coisa, é só chamar! 😊"""
                 error=str(e)
             )
             raise
-    
+
     def _format_for_channel(self, text: str, channel: TemplateChannel) -> str:
         """Apply channel-specific formatting."""
         if channel == TemplateChannel.WHATSAPP:
             # WhatsApp uses * for bold, _ for italic
             # Already in the templates
             return text
-        
+
         elif channel == TemplateChannel.EMAIL:
             # Convert WhatsApp formatting to HTML
             text = re.sub(r'\*([^*]+)\*', r'<strong>\1</strong>', text)
             text = re.sub(r'_([^_]+)_', r'<em>\1</em>', text)
             text = text.replace('\n', '<br>\n')
             return text
-        
+
         elif channel == TemplateChannel.SMS:
             # Remove formatting for SMS
             text = re.sub(r'\*([^*]+)\*', r'\1', text)
@@ -541,20 +542,20 @@ Qualquer coisa, é só chamar! 😊"""
             if len(text) > 160:
                 text = text[:157] + "..."
             return text
-        
+
         return text
-    
+
     def _format_currency(self, value: Union[float, str, Money]) -> str:
         """Format currency for display."""
         if isinstance(value, Money):
             return str(value)
-        
+
         try:
             amount = float(value)
             return f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         except (ValueError, TypeError):
             return str(value)
-    
+
     def _format_date(self, value: Union[str, date, datetime]) -> str:
         """Format date for display."""
         if isinstance(value, str):
@@ -566,64 +567,64 @@ Qualquer coisa, é só chamar! 😊"""
                     value = date.fromisoformat(value)
             except ValueError:
                 return value
-        
+
         if isinstance(value, datetime):
             return value.strftime("%d/%m/%Y às %H:%M")
         elif isinstance(value, date):
             return value.strftime("%d/%m/%Y")
-        
+
         return str(value)
-    
+
     def _format_phone(self, value: str) -> str:
         """Format phone number for display."""
         # Remove non-digits
         digits = re.sub(r'[^\d]', '', value)
-        
+
         if len(digits) == 11:
             # Brazilian mobile
             return f"({digits[:2]}) {digits[2:7]}-{digits[7:]}"
         elif len(digits) == 10:
             # Brazilian landline
             return f"({digits[:2]}) {digits[2:6]}-{digits[6:]}"
-        
+
         return value
-    
+
     def get_template(self, template_id: str) -> Optional[MessageTemplate]:
         """Get template by ID."""
         return self.templates.get(template_id)
-    
+
     def list_templates(
-        self,
-        category: Optional[TemplateCategory] = None,
-        channel: Optional[TemplateChannel] = None,
-        active_only: bool = True
+            self,
+            category: Optional[TemplateCategory] = None,
+            channel: Optional[TemplateChannel] = None,
+            active_only: bool = True
     ) -> List[MessageTemplate]:
         """List templates with optional filters."""
         templates = list(self.templates.values())
-        
+
         if category:
             templates = [t for t in templates if t.category == category]
-        
+
         if channel:
             templates = [t for t in templates if channel in t.channels]
-        
+
         if active_only:
             templates = [t for t in templates if t.is_active]
-        
+
         return templates
-    
+
     def get_required_variables(self, template_id: str) -> List[str]:
         """Get required variables for a template."""
         template = self.templates.get(template_id)
         if not template:
             return []
-        
+
         return template.variables
-    
+
     def validate_context(
-        self,
-        template_id: str,
-        context: Dict[str, Any]
+            self,
+            template_id: str,
+            context: Dict[str, Any]
     ) -> Tuple[bool, List[str]]:
         """
         Validate if context has all required variables.
@@ -634,26 +635,26 @@ Qualquer coisa, é só chamar! 😊"""
         template = self.templates.get(template_id)
         if not template:
             return False, ["template_not_found"]
-        
+
         missing = []
         for var in template.variables:
             if var not in context:
                 missing.append(var)
-        
+
         return len(missing) == 0, missing
-    
+
     def clone_template(
-        self,
-        template_id: str,
-        new_id: str,
-        new_name: str,
-        modifications: Optional[Dict[str, Any]] = None
+            self,
+            template_id: str,
+            new_id: str,
+            new_name: str,
+            modifications: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Clone an existing template with modifications."""
         original = self.templates.get(template_id)
         if not original:
             return False
-        
+
         # Create copy
         new_template = MessageTemplate(
             id=new_id,
@@ -666,19 +667,19 @@ Qualquer coisa, é só chamar! 😊"""
             buttons=[b.copy() for b in original.buttons],
             metadata=original.metadata.copy()
         )
-        
+
         # Apply modifications
         if modifications:
             for key, value in modifications.items():
                 if hasattr(new_template, key):
                     setattr(new_template, key, value)
-        
+
         return self.add_template(new_template)
-    
+
     def export_templates(self) -> str:
         """Export all templates as JSON."""
         export_data = []
-        
+
         for template in self.templates.values():
             export_data.append({
                 "id": template.id,
@@ -693,9 +694,9 @@ Qualquer coisa, é só chamar! 😊"""
                 "metadata": template.metadata,
                 "is_active": template.is_active
             })
-        
+
         return json.dumps(export_data, indent=2, ensure_ascii=False)
-    
+
     def import_templates(self, json_data: str) -> Tuple[int, List[str]]:
         """
         Import templates from JSON.
@@ -705,10 +706,10 @@ Qualquer coisa, é só chamar! 😊"""
         """
         success_count = 0
         errors = []
-        
+
         try:
             data = json.loads(json_data)
-            
+
             for item in data:
                 try:
                     template = MessageTemplate(
@@ -723,18 +724,18 @@ Qualquer coisa, é só chamar! 😊"""
                         metadata=item.get("metadata", {}),
                         is_active=item.get("is_active", True)
                     )
-                    
+
                     if self.add_template(template):
                         success_count += 1
                     else:
                         errors.append(f"Failed to add template: {item['id']}")
-                        
+
                 except Exception as e:
                     errors.append(f"Error in template {item.get('id', 'unknown')}: {e}")
-            
+
         except json.JSONDecodeError as e:
             errors.append(f"Invalid JSON: {e}")
-        
+
         return success_count, errors
 
 
@@ -745,18 +746,18 @@ _template_engine = None
 def get_template_engine() -> TemplateEngine:
     """Get or create template engine instance."""
     global _template_engine
-    
+
     if _template_engine is None:
         _template_engine = TemplateEngine()
-    
+
     return _template_engine
 
 
 # Convenience functions
 def render_template(
-    template_id: str,
-    context: Dict[str, Any],
-    channel: Optional[TemplateChannel] = None
+        template_id: str,
+        context: Dict[str, Any],
+        channel: Optional[TemplateChannel] = None
 ) -> Dict[str, Any]:
     """Render a template with context."""
     engine = get_template_engine()
@@ -764,17 +765,17 @@ def render_template(
 
 
 def send_templated_message(
-    phone: str,
-    template_id: str,
-    context: Dict[str, Any]
+        phone: str,
+        template_id: str,
+        context: Dict[str, Any]
 ) -> str:
     """Send a templated message via WhatsApp."""
     from app.integrations.whatsapp import WhatsAppClient
-    
+
     # Render template
     engine = get_template_engine()
     rendered = engine.render(template_id, context, TemplateChannel.WHATSAPP)
-    
+
     # Send message
     client = WhatsAppClient()
     return asyncio.run(

@@ -3,6 +3,7 @@
 Este guia detalha as melhorias implementadas no projeto ARIA e como utilizá-las.
 
 ## 📚 Índice
+
 1. [Processamento de Linguagem Natural Avançado](#nlp-avançado)
 2. [Processamento de Visão](#processamento-de-visão)
 3. [Integração Omnibees](#integração-omnibees)
@@ -12,7 +13,9 @@ Este guia detalha as melhorias implementadas no projeto ARIA e como utilizá-las
 ## 🧠 NLP Avançado
 
 ### Descrição
+
 O novo processador NLP (`nlp_processor.py`) oferece:
+
 - Detecção semântica de intenções usando embeddings
 - Extração inteligente de entidades (datas, números, quartos)
 - Análise de sentimento
@@ -36,6 +39,7 @@ print(f"Sentimento: {result.sentiment}")
 ```
 
 ### Exemplos de Datas Suportadas
+
 - **Relativas**: "hoje", "amanhã", "próxima sexta"
 - **Específicas**: "15/03", "20 de março", "15-03-2025"
 - **Períodos**: "este fim de semana", "próxima semana"
@@ -44,7 +48,9 @@ print(f"Sentimento: {result.sentiment}")
 ## 👁️ Processamento de Visão
 
 ### Descrição
+
 O processador de visão (`vision_processor.py`) permite:
+
 - OCR de documentos (RG, CPF, passaporte)
 - Leitura de QR codes
 - Análise de fotos de quartos
@@ -72,6 +78,7 @@ if result.image_type == ImageType.DOCUMENT:
 ```
 
 ### Tipos de Imagem Suportados
+
 - **Documentos**: RG, CPF, CNH, Passaporte
 - **QR Codes**: PIX, Links, Códigos de reserva
 - **Recibos**: Extração de valores e datas
@@ -80,7 +87,9 @@ if result.image_type == ImageType.DOCUMENT:
 ## 🏨 Integração Omnibees
 
 ### Descrição
+
 Cliente completo para integração com o Omnibees (`omnibees/client.py`):
+
 - Verificação de disponibilidade em tempo real
 - Criação e gestão de reservas
 - Geração de links de booking direto
@@ -96,27 +105,27 @@ async with OmnibeesClient() as client:
     # Verificar disponibilidade
     check_in = date.today() + timedelta(days=7)
     check_out = check_in + timedelta(days=2)
-    
+
     availability = await client.check_availability(
         check_in=check_in,
         check_out=check_out,
         guests=2
     )
-    
+
     # Criar reserva
     guest = Guest(
         name="João Silva",
         phone="+5511999999999",
         document="123.456.789-00"
     )
-    
+
     reservation = await client.create_reservation(
         check_in=check_in,
         check_out=check_out,
         room_type="TERREO",
         guests=[guest]
     )
-    
+
     print(f"Reserva criada: {reservation.id}")
 ```
 
@@ -136,7 +145,9 @@ link = client.generate_booking_link(
 ## 🤖 Agent Melhorado
 
 ### Descrição
+
 O agent melhorado (`improved_agent.py`) oferece:
+
 - Processamento semântico de mensagens
 - Respostas contextualizadas
 - Quick replies do WhatsApp
@@ -171,6 +182,7 @@ response = await agent.process_message(
 ### Recursos Especiais
 
 #### Quick Replies
+
 ```python
 # Respostas incluem opções rápidas baseadas no contexto
 if response.quick_replies:
@@ -179,6 +191,7 @@ if response.quick_replies:
 ```
 
 #### Mensagens Proativas
+
 ```python
 # Gerar mensagens proativas baseadas em triggers
 proactive = await agent.get_proactive_message(
@@ -188,6 +201,7 @@ proactive = await agent.get_proactive_message(
 ```
 
 #### Processamento de Mídia
+
 ```python
 # Processar imagens enviadas
 response = await agent.handle_media(
@@ -249,16 +263,19 @@ uv run aria test-ana "Quanto custa para 2 pessoas de 15 a 17 de março?"
 ## 📊 Métricas de Performance
 
 ### NLP
+
 - **Tempo de processamento**: < 100ms por mensagem
 - **Precisão de intents**: > 85%
 - **Extração de entidades**: > 90% para datas
 
 ### Visão
+
 - **OCR accuracy**: > 95% para documentos limpos
 - **QR detection**: > 99%
 - **Tempo de processamento**: < 2s por imagem
 
 ### Omnibees
+
 - **Latência de API**: < 500ms
 - **Taxa de sucesso**: > 99.5%
 - **Timeout**: 30s máximo
@@ -297,11 +314,13 @@ tesseract --version
 ## 🚨 Troubleshooting
 
 ### Erro: "No module named sentence_transformers"
+
 ```bash
 uv pip install sentence-transformers torch
 ```
 
 ### Erro: "TesseractNotFoundError"
+
 ```bash
 # Verificar caminho do Tesseract
 which tesseract
@@ -312,6 +331,7 @@ pytesseract.pytesseract.tesseract_cmd = '/usr/local/bin/tesseract'
 ```
 
 ### Erro: "Omnibees API timeout"
+
 - Verificar credenciais no .env
 - Usar modo development (retorna dados mock)
 - Aumentar timeout no cliente

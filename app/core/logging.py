@@ -16,10 +16,10 @@ from app.core.config import settings
 
 def setup_logging() -> None:
     """Configure structured logging based on environment."""
-    
+
     # Set log level from settings
     log_level = getattr(logging, settings.log_level)
-    
+
     # Configure structlog processors
     processors = [
         structlog.stdlib.filter_by_level,
@@ -31,7 +31,7 @@ def setup_logging() -> None:
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
     ]
-    
+
     # Add callsite info in development
     if settings.is_development:
         processors.insert(
@@ -44,13 +44,13 @@ def setup_logging() -> None:
                 ]
             ),
         )
-    
+
     # Use console renderer in development, JSON in production
     if settings.is_development:
         processors.append(structlog.dev.ConsoleRenderer(colors=True))
     else:
         processors.append(structlog.processors.JSONRenderer())
-    
+
     # Configure structlog
     structlog.configure(
         processors=processors,
@@ -58,19 +58,19 @@ def setup_logging() -> None:
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard logging
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=log_level,
     )
-    
+
     # Suppress noisy loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    
+
     # Set specific log levels for our modules
     logging.getLogger("aria").setLevel(log_level)
 
@@ -104,10 +104,10 @@ def log_context(**kwargs: Any) -> Dict[str, Any]:
 
 
 def log_request_context(
-    request_id: str,
-    user_id: str | None = None,
-    session_id: str | None = None,
-    **kwargs: Any,
+        request_id: str,
+        user_id: str | None = None,
+        session_id: str | None = None,
+        **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Add request-specific context to logs.

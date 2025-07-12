@@ -1,10 +1,10 @@
 """Reservation models for ARIA Hotel AI."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
+from decimal import Decimal
+from enum import Enum
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
-from enum import Enum
-from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
@@ -66,28 +66,28 @@ class RoomRate(BaseModel):
     extra_bed_rate: Optional[Decimal] = None
 
     def calculate_total(
-        self,
-        nights: int,
-        adults: int,
-        children: int = 0,
-        extra_beds: int = 0
+            self,
+            nights: int,
+            adults: int,
+            children: int = 0,
+            extra_beds: int = 0
     ) -> Decimal:
         """Calculate total price for the stay."""
         # Base rate for the room
         total = self.base_rate * nights
-        
+
         # Additional adults (usually first 2 are included)
         if adults > 2:
             total += self.adult_rate * (adults - 2) * nights
-        
+
         # Children
         if children > 0 and self.child_rate:
             total += self.child_rate * children * nights
-        
+
         # Extra beds
         if extra_beds > 0 and self.extra_bed_rate:
             total += self.extra_bed_rate * extra_beds * nights
-        
+
         return total
 
 
@@ -161,7 +161,7 @@ class Reservation(BaseModel):
     confirmed_at: Optional[datetime] = None
     cancelled_at: Optional[datetime] = None
     cancellation_reason: Optional[str] = None
-    
+
     # Related data
     room_assignments: List[RoomAssignment] = Field(default_factory=list)
     payments: List[Payment] = Field(default_factory=list)
@@ -177,7 +177,7 @@ class Reservation(BaseModel):
         """Generate booking reference."""
         import random
         import string
-        
+
         # Format: RES-YYYYMMDD-XXXX
         date_part = datetime.now().strftime("%Y%m%d")
         random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
@@ -198,18 +198,18 @@ class Reservation(BaseModel):
         """Calculate total reservation amount."""
         if not self.room_rate:
             return Decimal("0")
-        
+
         # Base accommodation cost
         total = self.room_rate.calculate_total(
             nights=self.nights,
             adults=self.adults,
             children=self.children
         )
-        
+
         # Add extras
         for extra in self.extras:
             total += extra.total_price
-        
+
         return total
 
     @property
@@ -219,7 +219,7 @@ class Reservation(BaseModel):
         for payment in self.payments:
             if payment.status == PaymentStatus.COMPLETED:
                 total_paid += payment.amount
-        
+
         return self.total_amount - total_paid
 
     @property
@@ -246,7 +246,7 @@ class Reservation(BaseModel):
     def calculate_cancellation_fee(self) -> Decimal:
         """Calculate cancellation fee based on policy."""
         days_until_checkin = (self.check_in - date.today()).days
-        
+
         if days_until_checkin >= 7:
             # Free cancellation
             return Decimal("0")

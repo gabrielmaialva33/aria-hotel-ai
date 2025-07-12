@@ -7,7 +7,6 @@ from typing import Dict, Optional, Tuple
 import httpx
 from PIL import Image
 
-from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -15,7 +14,7 @@ logger = get_logger(__name__)
 
 class MediaHandler:
     """Handle media files from WhatsApp messages."""
-    
+
     # Hotel images for sending
     HOTEL_IMAGES = {
         "exterior": "https://hotelpassarim.com.br/images/hotel-exterior.jpg",
@@ -27,7 +26,7 @@ class MediaHandler:
         "breakfast": "https://hotelpassarim.com.br/images/breakfast.jpg",
         "pasta": "https://hotelpassarim.com.br/images/pasta-rotation.jpg"
     }
-    
+
     def __init__(self):
         """Initialize media handler."""
         self.http_client = httpx.AsyncClient(
@@ -36,11 +35,11 @@ class MediaHandler:
             },
             timeout=30.0
         )
-    
+
     async def download_media(
-        self,
-        media_url: str,
-        auth_token: Optional[str] = None
+            self,
+            media_url: str,
+            auth_token: Optional[str] = None
     ) -> Tuple[bytes, str]:
         """
         Download media from URL.
@@ -57,23 +56,23 @@ class MediaHandler:
             headers = {}
             if auth_token:
                 headers["Authorization"] = f"Bearer {auth_token}"
-            
+
             # Download media
             response = await self.http_client.get(media_url, headers=headers)
             response.raise_for_status()
-            
+
             content = response.content
             content_type = response.headers.get("content-type", "application/octet-stream")
-            
+
             logger.info(
                 "Media downloaded",
                 url=media_url,
                 size=len(content),
                 content_type=content_type
             )
-            
+
             return content, content_type
-            
+
         except Exception as e:
             logger.error(
                 "Failed to download media",
@@ -81,11 +80,11 @@ class MediaHandler:
                 error=str(e)
             )
             raise
-    
+
     async def process_image(
-        self,
-        image_data: bytes,
-        max_size: Tuple[int, int] = (1024, 1024)
+            self,
+            image_data: bytes,
+            max_size: Tuple[int, int] = (1024, 1024)
     ) -> Dict:
         """
         Process image for analysis.
@@ -100,27 +99,27 @@ class MediaHandler:
         try:
             # Open image
             image = Image.open(io.BytesIO(image_data))
-            
+
             # Get original info
             original_size = image.size
             original_mode = image.mode
-            
+
             # Convert to RGB if needed
             if image.mode not in ("RGB", "L"):
                 image = image.convert("RGB")
-            
+
             # Resize if needed
             if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
                 image.thumbnail(max_size, Image.Resampling.LANCZOS)
-            
+
             # Save to bytes
             output = io.BytesIO()
             image.save(output, format="JPEG", quality=85)
             processed_data = output.getvalue()
-            
+
             # Encode to base64 for vision models
             base64_image = base64.b64encode(processed_data).decode("utf-8")
-            
+
             return {
                 "original_size": original_size,
                 "processed_size": image.size,
@@ -129,11 +128,11 @@ class MediaHandler:
                 "base64": base64_image,
                 "mime_type": "image/jpeg"
             }
-            
+
         except Exception as e:
             logger.error("Failed to process image", error=str(e))
             raise
-    
+
     def get_hotel_images(self, category: str = "general") -> list[str]:
         """
         Get hotel images for a category.
@@ -150,10 +149,10 @@ class MediaHandler:
             "amenities": ["pool", "lake", "restaurant"],
             "food": ["breakfast", "pasta", "restaurant"]
         }
-        
+
         image_keys = categories.get(category, ["exterior"])
         return [self.HOTEL_IMAGES[key] for key in image_keys if key in self.HOTEL_IMAGES]
-    
+
     async def analyze_guest_image(self, image_data: bytes) -> Dict:
         """
         Analyze image sent by guest (e.g., for special requests).
@@ -166,7 +165,7 @@ class MediaHandler:
         """
         # Process image
         processed = await self.process_image(image_data)
-        
+
         # TODO: Integrate with vision model for analysis
         # For now, return basic info
         return {
@@ -175,7 +174,7 @@ class MediaHandler:
             "description": "Imagem recebida do hóspede",
             "requires_human_review": True
         }
-    
+
     def format_media_response(self, media_type: str) -> Dict:
         """
         Format media response based on request type.
@@ -204,12 +203,12 @@ class MediaHandler:
                 "media": self.get_hotel_images("food")
             }
         }
-        
+
         return responses.get(media_type, {
             "text": "Desculpe, não encontrei fotos dessa categoria.",
             "media": []
         })
-    
+
     async def cleanup(self):
         """Cleanup resources."""
         await self.http_client.aclose()

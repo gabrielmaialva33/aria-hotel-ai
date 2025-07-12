@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 class WhatsAppClient:
     """Client for WhatsApp messaging via Twilio."""
-    
+
     def __init__(self):
         """Initialize WhatsApp client with Twilio credentials."""
         self.client = TwilioClient(
@@ -21,19 +21,19 @@ class WhatsAppClient:
             settings.twilio_auth_token
         )
         self.from_number = settings.twilio_whatsapp_number
-        
+
         # Validate configuration
         if not self.from_number:
             raise ValueError("TWILIO_WHATSAPP_NUMBER not configured")
-        
+
         logger.info("WhatsApp client initialized", from_number=self.from_number)
-    
+
     async def send_message(
-        self,
-        to: str,
-        body: str,
-        media_urls: Optional[List[str]] = None,
-        callback_url: Optional[str] = None
+            self,
+            to: str,
+            body: str,
+            media_urls: Optional[List[str]] = None,
+            callback_url: Optional[str] = None
     ) -> str:
         """
         Send WhatsApp message.
@@ -50,7 +50,7 @@ class WhatsAppClient:
         # Ensure phone has whatsapp: prefix
         if not to.startswith("whatsapp:"):
             to = f"whatsapp:{to}"
-        
+
         try:
             # Build message parameters
             params = {
@@ -58,18 +58,18 @@ class WhatsAppClient:
                 "from_": self.from_number,
                 "to": to
             }
-            
+
             # Add media if provided
             if media_urls:
                 params["media_url"] = media_urls[:10]  # Twilio limit
-            
+
             # Add callback URL if provided
             if callback_url:
                 params["status_callback"] = callback_url
-            
+
             # Send message
             message = self.client.messages.create(**params)
-            
+
             logger.info(
                 "WhatsApp message sent",
                 message_sid=message.sid,
@@ -77,9 +77,9 @@ class WhatsAppClient:
                 body_length=len(body),
                 media_count=len(media_urls) if media_urls else 0
             )
-            
+
             return message.sid
-            
+
         except Exception as e:
             logger.error(
                 "Failed to send WhatsApp message",
@@ -88,12 +88,12 @@ class WhatsAppClient:
                 body_preview=body[:100]
             )
             raise
-    
+
     async def send_template_message(
-        self,
-        to: str,
-        template_name: str,
-        template_params: Optional[Dict] = None
+            self,
+            to: str,
+            template_name: str,
+            template_params: Optional[Dict] = None
     ) -> str:
         """
         Send WhatsApp template message.
@@ -110,7 +110,7 @@ class WhatsAppClient:
         # For now, fall back to regular message
         body = self._format_template(template_name, template_params)
         return await self.send_message(to, body)
-    
+
     def parse_webhook(self, form_data: Dict) -> Dict:
         """
         Parse incoming webhook from Twilio.
@@ -126,7 +126,7 @@ class WhatsAppClient:
         to_number = form_data.get("To", "").replace("whatsapp:", "")
         body = form_data.get("Body", "")
         message_sid = form_data.get("MessageSid", "")
-        
+
         # Extract media if present
         media_urls = []
         num_media = int(form_data.get("NumMedia", 0))
@@ -138,7 +138,7 @@ class WhatsAppClient:
                     "url": media_url,
                     "content_type": media_type
                 })
-        
+
         # Extract location if present
         location = None
         if form_data.get("Latitude") and form_data.get("Longitude"):
@@ -148,7 +148,7 @@ class WhatsAppClient:
                 "label": form_data.get("LocationLabel"),
                 "address": form_data.get("LocationAddress")
             }
-        
+
         return {
             "message_sid": message_sid,
             "from": from_number,
@@ -158,15 +158,15 @@ class WhatsAppClient:
             "location": location,
             "raw_data": form_data
         }
-    
+
     def create_response(self) -> MessagingResponse:
         """Create a new Twilio messaging response."""
         return MessagingResponse()
-    
+
     def _format_template(
-        self,
-        template_name: str,
-        params: Optional[Dict] = None
+            self,
+            template_name: str,
+            params: Optional[Dict] = None
     ) -> str:
         """Format a template with parameters."""
         templates = {
@@ -175,18 +175,18 @@ class WhatsAppClient:
             "check_in_reminder": "Olá {name}! Lembramos que seu check-in é amanhã às {time}.",
             "feedback_request": "Como foi sua estadia no Hotel Passarim? Adoraríamos ouvir sua opinião!"
         }
-        
+
         template = templates.get(template_name, "")
         if params:
             template = template.format(**params)
-        
+
         return template
-    
+
     async def send_quick_replies(
-        self,
-        to: str,
-        body: str,
-        options: List[str]
+            self,
+            to: str,
+            body: str,
+            options: List[str]
     ) -> str:
         """
         Send message with quick reply options.
@@ -198,32 +198,32 @@ class WhatsAppClient:
         formatted_body = f"{body}\n\n"
         for i, option in enumerate(options, 1):
             formatted_body += f"{i}. {option}\n"
-        
+
         formatted_body += "\nResponda com o número da opção desejada."
-        
+
         return await self.send_message(to, formatted_body)
-    
+
     async def send_location(
-        self,
-        to: str,
-        latitude: float,
-        longitude: float,
-        name: str,
-        address: str
+            self,
+            to: str,
+            latitude: float,
+            longitude: float,
+            name: str,
+            address: str
     ) -> str:
         """Send location message."""
         # Twilio supports location sharing via specific parameters
         body = f"📍 {name}\n{address}"
-        
+
         # TODO: Implement proper location sharing when Twilio supports it
         # For now, send Google Maps link
         maps_url = f"https://maps.google.com/?q={latitude},{longitude}"
-        
+
         return await self.send_message(
             to,
             f"{body}\n\n🗺️ Ver no mapa: {maps_url}"
         )
-    
+
     async def mark_as_read(self, message_sid: str) -> bool:
         """Mark a message as read (if supported)."""
         # TODO: Implement when Twilio supports read receipts

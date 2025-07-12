@@ -93,16 +93,16 @@ target-version = "py311"
 line-length = 100
 fix = true
 select = [
-    "E",     # pycodestyle errors
-    "W",     # pycodestyle warnings
-    "F",     # pyflakes
-    "I",     # isort
-    "C",     # flake8-comprehensions
-    "B",     # flake8-bugbear
-    "UP",    # pyupgrade
-    "SIM",   # flake8-simplify
-    "TCH",   # flake8-type-checking
-    "RUF",   # Ruff-specific rules
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "C", # flake8-comprehensions
+    "B", # flake8-bugbear
+    "UP", # pyupgrade
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "RUF", # Ruff-specific rules
 ]
 ignore = []
 

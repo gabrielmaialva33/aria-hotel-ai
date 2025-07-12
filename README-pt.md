@@ -35,7 +35,9 @@
 
 ## :bookmark: Sobre
 
-**ARIA Hotel AI** é um sistema completo de concierge multimodal alimentado por IA para hotéis, construído com o **Agno Framework** e modelos de IA avançados. O sistema oferece atendimento automatizado via WhatsApp, check-in digital, gestão de serviços e muito mais, revolucionando a experiência de hospitalidade.
+**ARIA Hotel AI** é um sistema completo de concierge multimodal alimentado por IA para hotéis, construído com o **Agno
+Framework** e modelos de IA avançados. O sistema oferece atendimento automatizado via WhatsApp, check-in digital, gestão
+de serviços e muito mais, revolucionando a experiência de hospitalidade.
 
 ### 🏗️ Visão Geral da Arquitetura
 
@@ -316,6 +318,7 @@ Os seguintes softwares devem estar instalados:
 - **[PostgreSQL](https://www.postgresql.org/download/)** (ou via Docker)
 
 ### Chaves API Necessárias:
+
 - **Chave API Google Gemini**
 - **SID da Conta Twilio e Token de Autenticação**
 - **Número WhatsApp Business** (via Twilio)
@@ -437,22 +440,22 @@ graph LR
 
 ### 📋 Detalhes das Rotas
 
-| Método | Endpoint | Descrição | Auth Necessária |
-|--------|----------|-----------|-----------------|
-| **GET** | `/` | Informações da API e endpoints disponíveis | ❌ |
-| **GET** | `/health` | Verificação de saúde com status dos serviços | ❌ |
-| **GET** | `/metrics` | Métricas Prometheus | ❌ |
-| **GET** | `/docs` | Documentação interativa da API | ❌ |
-| **GET** | `/api/v1/stats` | Estatísticas da aplicação | ❌ |
-| **POST** | `/webhooks/whatsapp` | Webhook de mensagens WhatsApp | ✅ (Twilio) |
-| **POST** | `/webhooks/voice` | Webhook de chamadas de voz | ✅ (Twilio) |
-| **GET** | `/api/v1/reservations` | Listar reservas | ✅ |
-| **POST** | `/api/v1/reservations` | Criar reserva | ✅ |
-| **GET** | `/api/v1/services` | Listar serviços do hotel | ✅ |
-| **POST** | `/api/v1/services` | Solicitar serviço | ✅ |
-| **GET** | `/api/v1/payments` | Listar pagamentos | ✅ |
-| **POST** | `/api/v1/payments/pix` | Gerar pagamento PIX | ✅ |
-| **GET** | `/api/v1/analytics/dashboard` | Dashboard de analytics | ✅ |
+| Método   | Endpoint                      | Descrição                                    | Auth Necessária |
+|----------|-------------------------------|----------------------------------------------|-----------------|
+| **GET**  | `/`                           | Informações da API e endpoints disponíveis   | ❌               |
+| **GET**  | `/health`                     | Verificação de saúde com status dos serviços | ❌               |
+| **GET**  | `/metrics`                    | Métricas Prometheus                          | ❌               |
+| **GET**  | `/docs`                       | Documentação interativa da API               | ❌               |
+| **GET**  | `/api/v1/stats`               | Estatísticas da aplicação                    | ❌               |
+| **POST** | `/webhooks/whatsapp`          | Webhook de mensagens WhatsApp                | ✅ (Twilio)      |
+| **POST** | `/webhooks/voice`             | Webhook de chamadas de voz                   | ✅ (Twilio)      |
+| **GET**  | `/api/v1/reservations`        | Listar reservas                              | ✅               |
+| **POST** | `/api/v1/reservations`        | Criar reserva                                | ✅               |
+| **GET**  | `/api/v1/services`            | Listar serviços do hotel                     | ✅               |
+| **POST** | `/api/v1/services`            | Solicitar serviço                            | ✅               |
+| **GET**  | `/api/v1/payments`            | Listar pagamentos                            | ✅               |
+| **POST** | `/api/v1/payments/pix`        | Gerar pagamento PIX                          | ✅               |
+| **GET**  | `/api/v1/analytics/dashboard` | Dashboard de analytics                       | ✅               |
 
 ### 🔄 Fluxo Requisição/Resposta
 
@@ -612,12 +615,14 @@ WEBHOOK_BASE_URL=https://seu-dominio.com
 ### 🚢 Deploy
 
 #### Usando Docker:
+
 ```bash
 # Build e executar stack completo
 docker-compose up --build
 ```
 
 #### Deploy em produção:
+
 ```bash
 # Build para produção
 docker build -t aria-hotel-ai:latest .

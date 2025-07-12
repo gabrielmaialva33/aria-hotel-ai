@@ -35,7 +35,9 @@
 
 ## :bookmark: About
 
-**ARIA Hotel AI** is a comprehensive AI-powered multimodal concierge system for hotels, built with the **Agno Framework** and advanced AI models. The system provides automated customer service via WhatsApp, digital check-in, service management, and much more, revolutionizing the hospitality experience.
+**ARIA Hotel AI** is a comprehensive AI-powered multimodal concierge system for hotels, built with the **Agno Framework
+** and advanced AI models. The system provides automated customer service via WhatsApp, digital check-in, service
+management, and much more, revolutionizing the hospitality experience.
 
 ### 🏗️ Architecture Overview
 
@@ -316,6 +318,7 @@ The following software must be installed:
 - **[PostgreSQL](https://www.postgresql.org/download/)** (or via Docker)
 
 ### API Keys Required:
+
 - **Google Gemini API Key**
 - **Twilio Account SID and Auth Token**
 - **WhatsApp Business Number** (via Twilio)
@@ -435,22 +438,22 @@ graph LR
 
 ### 📋 Route Details
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| **GET** | `/` | API information and available endpoints | ❌ |
-| **GET** | `/health` | Health check with service status | ❌ |
-| **GET** | `/metrics` | Prometheus metrics | ❌ |
-| **GET** | `/docs` | Interactive API documentation | ❌ |
-| **GET** | `/api/v1/stats` | Application statistics | ❌ |
-| **POST** | `/webhooks/whatsapp` | WhatsApp message webhook | ✅ (Twilio) |
-| **POST** | `/webhooks/voice` | Voice call webhook | ✅ (Twilio) |
-| **GET** | `/api/v1/reservations` | List reservations | ✅ |
-| **POST** | `/api/v1/reservations` | Create reservation | ✅ |
-| **GET** | `/api/v1/services` | List hotel services | ✅ |
-| **POST** | `/api/v1/services` | Request service | ✅ |
-| **GET** | `/api/v1/payments` | List payments | ✅ |
-| **POST** | `/api/v1/payments/pix` | Generate PIX payment | ✅ |
-| **GET** | `/api/v1/analytics/dashboard` | Analytics dashboard | ✅ |
+| Method   | Endpoint                      | Description                             | Auth Required |
+|----------|-------------------------------|-----------------------------------------|---------------|
+| **GET**  | `/`                           | API information and available endpoints | ❌             |
+| **GET**  | `/health`                     | Health check with service status        | ❌             |
+| **GET**  | `/metrics`                    | Prometheus metrics                      | ❌             |
+| **GET**  | `/docs`                       | Interactive API documentation           | ❌             |
+| **GET**  | `/api/v1/stats`               | Application statistics                  | ❌             |
+| **POST** | `/webhooks/whatsapp`          | WhatsApp message webhook                | ✅ (Twilio)    |
+| **POST** | `/webhooks/voice`             | Voice call webhook                      | ✅ (Twilio)    |
+| **GET**  | `/api/v1/reservations`        | List reservations                       | ✅             |
+| **POST** | `/api/v1/reservations`        | Create reservation                      | ✅             |
+| **GET**  | `/api/v1/services`            | List hotel services                     | ✅             |
+| **POST** | `/api/v1/services`            | Request service                         | ✅             |
+| **GET**  | `/api/v1/payments`            | List payments                           | ✅             |
+| **POST** | `/api/v1/payments/pix`        | Generate PIX payment                    | ✅             |
+| **GET**  | `/api/v1/analytics/dashboard` | Analytics dashboard                     | ✅             |
 
 ### 🔄 Request/Response Flow
 
@@ -610,12 +613,14 @@ WEBHOOK_BASE_URL=https://your-domain.com
 ### 🚢 Deployment
 
 #### Using Docker:
+
 ```bash
 # Build and run complete stack
 docker-compose up --build
 ```
 
 #### Production deployment:
+
 ```bash
 # Build for production
 docker build -t aria-hotel-ai:latest .

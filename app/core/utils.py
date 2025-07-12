@@ -2,7 +2,7 @@
 
 import re
 from datetime import date, datetime, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from app.core.logging import get_logger
 
@@ -21,14 +21,14 @@ def parse_date_pt(date_str: str) -> Optional[date]:
     """
     date_str = date_str.lower().strip()
     today = date.today()
-    
+
     # Direct date formats
     for fmt in ["%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%d/%m/%y", "%d-%m-%y"]:
         try:
             return datetime.strptime(date_str, fmt).date()
         except ValueError:
             continue
-    
+
     # Relative dates
     if date_str in ["hoje", "hj"]:
         return today
@@ -36,7 +36,7 @@ def parse_date_pt(date_str: str) -> Optional[date]:
         return today + timedelta(days=1)
     elif date_str in ["depois de amanhã", "depois de amanha"]:
         return today + timedelta(days=2)
-    
+
     # Month names in Portuguese
     months_pt = {
         "janeiro": 1, "jan": 1,
@@ -52,7 +52,7 @@ def parse_date_pt(date_str: str) -> Optional[date]:
         "novembro": 11, "nov": 11,
         "dezembro": 12, "dez": 12
     }
-    
+
     # Try "DD de MONTH" format
     match = re.match(r"(\d{1,2})\s*de\s*(\w+)", date_str)
     if match:
@@ -69,7 +69,7 @@ def parse_date_pt(date_str: str) -> Optional[date]:
                 return result
             except ValueError:
                 pass
-    
+
     # Weekday names
     weekdays_pt = {
         "segunda": 0, "segunda-feira": 0,
@@ -80,7 +80,7 @@ def parse_date_pt(date_str: str) -> Optional[date]:
         "sábado": 5, "sabado": 5,
         "domingo": 6
     }
-    
+
     # Next weekday
     for weekday_name, weekday_num in weekdays_pt.items():
         if f"próxima {weekday_name}" in date_str or f"proxima {weekday_name}" in date_str:
@@ -93,7 +93,7 @@ def parse_date_pt(date_str: str) -> Optional[date]:
             if days_ahead <= 0:  # Target day already happened this week
                 days_ahead += 7
             return today + timedelta(days_ahead)
-    
+
     return None
 
 
@@ -105,11 +105,11 @@ def extract_phone_number(text: str) -> Optional[str]:
     """
     # Remove all non-numeric characters
     numbers = re.sub(r'\D', '', text)
-    
+
     # Brazilian phone patterns
     # Mobile: 11 digits (with area code)
     # Landline: 10 digits (with area code)
-    
+
     if len(numbers) == 11 and numbers[2] == '9':
         # Valid mobile
         return f"+55{numbers}"
@@ -125,7 +125,7 @@ def extract_phone_number(text: str) -> Optional[str]:
     elif len(numbers) == 8:
         # Landline without area code - assume São Paulo (11)
         return f"+5511{numbers}"
-    
+
     return None
 
 
@@ -136,13 +136,13 @@ def format_phone_display(phone: str) -> str:
         phone = phone[3:]
     elif phone.startswith("55"):
         phone = phone[2:]
-    
+
     # Format as (XX) XXXXX-XXXX or (XX) XXXX-XXXX
     if len(phone) == 11:
         return f"({phone[:2]}) {phone[2:7]}-{phone[7:]}"
     elif len(phone) == 10:
         return f"({phone[:2]}) {phone[2:6]}-{phone[6:]}"
-    
+
     return phone
 
 
@@ -155,11 +155,11 @@ def calculate_age(birth_date: date) -> int:
     """Calculate age from birth date."""
     today = date.today()
     age = today.year - birth_date.year
-    
+
     # Adjust if birthday hasn't occurred this year
     if (today.month, today.day) < (birth_date.month, birth_date.day):
         age -= 1
-    
+
     return age
 
 
@@ -174,14 +174,14 @@ def parse_children_ages(text: str) -> List[int]:
     """
     # Find all numbers in the text
     numbers = re.findall(r'\d+', text)
-    
+
     # Convert to integers and filter reasonable ages (0-17)
     ages = []
     for num in numbers:
         age = int(num)
         if 0 <= age <= 17:
             ages.append(age)
-    
+
     return ages
 
 
@@ -194,7 +194,7 @@ def is_business_hours() -> bool:
 def get_greeting() -> str:
     """Get appropriate greeting based on time of day."""
     hour = datetime.now().hour
-    
+
     if 5 <= hour < 12:
         return "Bom dia"
     elif 12 <= hour < 18:
@@ -207,13 +207,13 @@ def sanitize_message(text: str) -> str:
     """Sanitize message text for storage/display."""
     # Remove excessive whitespace
     text = re.sub(r'\s+', ' ', text)
-    
+
     # Remove control characters
     text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
-    
+
     # Trim
     text = text.strip()
-    
+
     return text
 
 
@@ -225,13 +225,13 @@ def split_message_for_whatsapp(text: str, max_length: int = 1600) -> List[str]:
     """
     if len(text) <= max_length:
         return [text]
-    
+
     messages = []
     current = ""
-    
+
     # Split by paragraphs first
     paragraphs = text.split('\n\n')
-    
+
     for paragraph in paragraphs:
         if len(current) + len(paragraph) + 2 <= max_length:
             if current:
@@ -240,7 +240,7 @@ def split_message_for_whatsapp(text: str, max_length: int = 1600) -> List[str]:
         else:
             if current:
                 messages.append(current)
-            
+
             # If paragraph itself is too long, split by sentences
             if len(paragraph) > max_length:
                 sentences = re.split(r'(?<=[.!?])\s+', paragraph)
@@ -256,10 +256,10 @@ def split_message_for_whatsapp(text: str, max_length: int = 1600) -> List[str]:
                         current = sentence
             else:
                 current = paragraph
-    
+
     if current:
         messages.append(current)
-    
+
     return messages
 
 
@@ -267,26 +267,26 @@ def generate_booking_reference() -> str:
     """Generate a unique booking reference."""
     import random
     import string
-    
+
     # Format: HP-YYYYMMDD-XXXX
     today = date.today()
     date_str = today.strftime("%Y%m%d")
     random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-    
+
     return f"HP-{date_str}-{random_str}"
 
 
 def parse_meal_preference(text: str) -> Optional[str]:
     """Parse meal plan preference from text."""
     text = text.lower()
-    
+
     if any(word in text for word in ["completa", "completo", "todas as refeições", "todas refeições"]):
         return "pensao_completa"
     elif any(word in text for word in ["meia pensão", "meia pensao", "meia-pensão"]):
         return "meia_pensao"
     elif any(word in text for word in ["café", "cafe", "apenas café", "so cafe"]):
         return "cafe_da_manha"
-    
+
     return None
 
 

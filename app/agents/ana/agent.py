@@ -8,6 +8,7 @@ from dataclasses import dataclass
 # Agno imports
 from agno.agent import Agent
 from agno.models.google import Gemini
+from agno.tools.reasoning import ReasoningTools
 
 # Local imports
 from app.agents.ana.calculator import PricingCalculator
@@ -61,16 +62,20 @@ class AnaAgent:
             using_vertexai=False
         )
         
-        # Initialize Agno agent with Gemini
+        # Initialize Agno agent with Gemini Flash and reasoning
         self.agent = Agent(
             model=Gemini(
-                id="gemini-2.0-flash",
+                id="gemini-2.0-flash",  # Recommended for most use-cases
                 api_key=api_key,
                 temperature=0.7,
                 vertexai=False,  # Force Google AI Studio instead of Vertex AI
             ),
-            instructions=ANA_SYSTEM_PROMPT,
+            reasoning=True,  # Enable reasoning for better responses
+            instructions=ANA_SYSTEM_PROMPT + f"\n\nData atual: {datetime.now().strftime('%d/%m/%Y')} ({datetime.now().strftime('%A')})",
             tools=[
+                # Reasoning tools for better problem solving
+                ReasoningTools(add_instructions=True),
+                # Hotel specific tools
                 self.calculate_pricing,
                 self.check_availability,
                 self.generate_omnibees_link,
@@ -86,6 +91,12 @@ class AnaAgent:
                 self.route_service_request,
                 self.check_payment_status,
             ],
+            # Chat history configuration
+            add_history_to_messages=True,
+            num_history_responses=3,
+            read_chat_history=True,
+            # Display configuration
+            show_tool_calls=True,
             markdown=True,
         )
     
@@ -114,11 +125,13 @@ class AnaAgent:
         # Add message to history
         conv_context.add_message("user", message)
         
-        # First message - send greeting
-        if len(conv_context.history) == 1:
-            conv_context.state = "greeting"
+        # First message - send greeting only if it's really the first interaction
+        if len(conv_context.history) == 1 and conv_context.state == "initial":
+            conv_context.state = "greeting_sent"
             response = AnaResponse(text=ANA_GREETING)
             conv_context.add_message("assistant", response.text)
+            # Save context to persist state
+            self.contexts[phone] = conv_context
             return response
         
         try:
@@ -130,7 +143,9 @@ class AnaAgent:
                 "current_reservation": conv_context.current_request.model_dump() if conv_context.current_request else None,
                 "preferences": conv_context.preferences,
                 "media_url": media_url,
-                "history": conv_context.history[-5:]  # Last 5 messages for context
+                "history": conv_context.history[-5:],  # Last 5 messages for context
+                "current_date": datetime.now().strftime("%Y-%m-%d"),
+                "current_datetime": datetime.now().isoformat()
             }
             
             # Process with Agno agent
@@ -152,6 +167,7 @@ class AnaAgent:
             
             # Update context
             conv_context.add_message("assistant", response.text)
+            conv_context.state = "active"  # Update state after successful interaction
             
             # Save context
             self.contexts[phone] = conv_context
@@ -236,20 +252,20 @@ class AnaAgent:
         Calculate and present pricing options for hotel stay.
         
         Args:
-            check_in: Check-in date (YYYY-MM-DD)
-            check_out: Check-out date (YYYY-MM-DD)
+            check_in: Check-in date (YYYY-MM-DD or DD/MM/YYYY or "hoje" or "amanhã")
+            check_out: Check-out date (YYYY-MM-DD or DD/MM/YYYY or "hoje" or "amanhã")
             adults: Number of adults
             children: List of children ages
-            room_type: Optional room type preference
+            room_type: Optional room type preference (terreo or superior)
             meal_plan: Optional meal plan preference
             
         Returns:
-            Formatted pricing message
+            Formatted pricing message with all options
         """
         try:
-            # Parse dates
-            check_in_date = datetime.strptime(check_in, "%Y-%m-%d").date()
-            check_out_date = datetime.strptime(check_out, "%Y-%m-%d").date()
+            # Parse dates - handle different formats
+            check_in_date = self._parse_flexible_date(check_in)
+            check_out_date = self._parse_flexible_date(check_out)
             
             # Create reservation request
             request = ReservationRequest(
@@ -670,3 +686,34 @@ class AnaAgent:
                         year = f"20{year}"
                     return date(int(year), int(month), int(day))
         raise ValueError(f"Could not parse date: {date_str}")
+    
+    def _parse_flexible_date(self, date_str: str) -> date:
+        """Parse date from various formats including 'hoje' and 'amanhã'."""
+        date_str = date_str.strip().lower()
+        
+        # Handle special keywords
+        if date_str in ["hoje", "today"]:
+            return datetime.now().date()
+        elif date_str in ["amanhã", "amanha", "tomorrow"]:
+            return datetime.now().date() + timedelta(days=1)
+        
+        # Try parsing as YYYY-MM-DD
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+        
+        # Try parsing as DD/MM/YYYY
+        try:
+            return datetime.strptime(date_str, "%d/%m/%Y").date()
+        except ValueError:
+            pass
+        
+        # Try parsing as DD-MM-YYYY
+        try:
+            return datetime.strptime(date_str, "%d-%m-%Y").date()
+        except ValueError:
+            pass
+        
+        # Try the original parse_date method
+        return self._parse_date(date_str)

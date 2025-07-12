@@ -1,33 +1,29 @@
 """Improved Ana Agent with advanced NLP and multimodal capabilities."""
 
-import asyncio
-import json
-from datetime import date, datetime
-from typing import Dict, List, Optional, Any
-from uuid import UUID, uuid4
+from datetime import datetime
+from typing import Dict, Optional
 
-from app.agents.ana.nlp_processor import NLPProcessor, Intent
 from app.agents.ana.calculator import PricingCalculator
-from app.agents.ana.knowledge_base import HOTEL_INFO
 from app.agents.ana.models import AnaResponse, ConversationContext, ReservationRequest
-from app.core.logging import get_logger
+from app.agents.ana.nlp_processor import NLPProcessor, Intent
 from app.core.config import settings
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 class ImprovedAnaAgent:
     """Enhanced Ana agent with semantic understanding and proactive features."""
-    
+
     def __init__(self):
         """Initialize improved Ana agent."""
         self.name = "Ana"
         self.nlp = NLPProcessor()
         self.calculator = PricingCalculator()
-        
+
         # In-memory context store (would be Redis/DB in production)
         self.contexts: Dict[str, ConversationContext] = {}
-        
+
         # Response templates by intent
         self.response_templates = {
             Intent.GREETING: [
@@ -40,7 +36,7 @@ class ImprovedAnaAgent:
                 "Hmm, não tenho certeza se entendi. Você está perguntando sobre:\n• Reservas e valores?\n• Estrutura do hotel?\n• Nosso restaurante?\n• Outra informação?"
             ]
         }
-        
+
         # Quick reply suggestions by intent
         self.quick_replies = {
             Intent.GREETING: [
@@ -62,14 +58,14 @@ class ImprovedAnaAgent:
                 "Falar com alguém"
             ]
         }
-    
+
     async def process_message(
-        self,
-        phone: str,
-        message: str,
-        media_url: Optional[str] = None,
-        location: Optional[Dict] = None,
-        context: Optional[Dict] = None
+            self,
+            phone: str,
+            message: str,
+            media_url: Optional[str] = None,
+            location: Optional[Dict] = None,
+            context: Optional[Dict] = None
     ) -> AnaResponse:
         """
         Process incoming message with advanced NLP.
@@ -87,13 +83,13 @@ class ImprovedAnaAgent:
         try:
             # Get or create conversation context
             conv_context = self._get_or_create_context(phone, context)
-            
+
             # Add message to history
             conv_context.add_message("user", message)
-            
+
             # Process with NLP
             nlp_result = await self.nlp.process(message)
-            
+
             logger.info(
                 "NLP processing complete",
                 phone=phone,
@@ -102,7 +98,7 @@ class ImprovedAnaAgent:
                 entities=[e.type for e in nlp_result.entities],
                 sentiment=nlp_result.sentiment
             )
-            
+
             # Route to appropriate handler
             response = await self._route_intent(
                 nlp_result,
@@ -110,24 +106,24 @@ class ImprovedAnaAgent:
                 media_url,
                 location
             )
-            
+
             # Add quick replies if appropriate
             if nlp_result.intent in self.quick_replies:
                 response.quick_replies = self.quick_replies[nlp_result.intent]
-            
+
             # Check if sentiment is negative - might need human help
             if nlp_result.sentiment == "negative" and nlp_result.confidence > 0.7:
                 response.needs_human = True
                 response.metadata["transfer_reason"] = "negative_sentiment"
-            
+
             # Save updated context
             conv_context.add_message("assistant", response.text)
             conv_context.metadata["last_intent"] = nlp_result.intent.value
             conv_context.metadata["last_sentiment"] = nlp_result.sentiment
             self.contexts[phone] = conv_context
-            
+
             return response
-            
+
         except Exception as e:
             logger.error(
                 "Error processing message",
@@ -141,16 +137,16 @@ class ImprovedAnaAgent:
                 needs_human=True,
                 action="transfer_to_reception"
             )
-    
+
     async def _route_intent(
-        self,
-        nlp_result,
-        context: ConversationContext,
-        media_url: Optional[str] = None,
-        location: Optional[Dict] = None
+            self,
+            nlp_result,
+            context: ConversationContext,
+            media_url: Optional[str] = None,
+            location: Optional[Dict] = None
     ) -> AnaResponse:
         """Route to appropriate handler based on intent."""
-        
+
         # Map intents to handlers
         handlers = {
             Intent.GREETING: self._handle_greeting,
@@ -165,10 +161,10 @@ class ImprovedAnaAgent:
             Intent.THANKS: self._handle_thanks,
             Intent.UNKNOWN: self._handle_unknown
         }
-        
+
         handler = handlers.get(nlp_result.intent, self._handle_unknown)
         return await handler(nlp_result, context, media_url, location)
-    
+
     async def _handle_greeting(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Handle greeting intent."""
         # Personalize if we know the guest
@@ -178,12 +174,12 @@ class ImprovedAnaAgent:
             # Use template
             import random
             text = random.choice(self.response_templates[Intent.GREETING])
-        
+
         return AnaResponse(
             text=text,
             metadata={"intent": "greeting"}
         )
-    
+
     async def _handle_pricing_request(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Handle pricing request with extracted entities."""
         # Extract relevant entities
@@ -191,7 +187,7 @@ class ImprovedAnaAgent:
         adults = next((e for e in nlp_result.entities if e.type == "adults"), None)
         children = [e for e in nlp_result.entities if e.type == "children"]
         nights = next((e for e in nlp_result.entities if e.type == "nights"), None)
-        
+
         # Check if we have enough information
         if len(dates) < 2 and not nights:
             return AnaResponse(
@@ -202,7 +198,7 @@ class ImprovedAnaAgent:
                      "Por exemplo: *'Valores para 2 adultos de 15 a 17 de março'*",
                 metadata={"intent": "pricing_request", "missing_info": True}
             )
-        
+
         try:
             # Determine check-in and check-out
             if len(dates) >= 2:
@@ -213,11 +209,11 @@ class ImprovedAnaAgent:
                 check_out = check_in + timedelta(days=int(nights.value))
             else:
                 raise ValueError("Insufficient date information")
-            
+
             # Get guest counts
             adult_count = int(adults.value) if adults else 2
             children_ages = [int(c.value) for c in children] if children else []
-            
+
             # Create reservation request
             request = ReservationRequest(
                 check_in=check_in,
@@ -225,11 +221,11 @@ class ImprovedAnaAgent:
                 adults=adult_count,
                 children=children_ages
             )
-            
+
             # Calculate pricing
             prices = self.calculator.calculate(request)
             message = self.calculator.format_pricing_message(prices)
-            
+
             # Add visual elements
             if settings.enable_vision_analysis:
                 # Would generate room images here
@@ -239,7 +235,7 @@ class ImprovedAnaAgent:
                 ]
             else:
                 media_urls = None
-            
+
             return AnaResponse(
                 text=message,
                 media_urls=media_urls,
@@ -252,7 +248,7 @@ class ImprovedAnaAgent:
                     "children": children_ages
                 }
             )
-            
+
         except Exception as e:
             logger.error("Error calculating pricing", error=str(e))
             return AnaResponse(
@@ -260,23 +256,23 @@ class ImprovedAnaAgent:
                      "Poderia me informar novamente as datas e número de pessoas?",
                 metadata={"intent": "pricing_request", "error": True}
             )
-    
+
     async def _handle_availability_check(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Check availability for dates."""
         dates = [e for e in nlp_result.entities if e.type == "date"]
-        
+
         if len(dates) < 2:
             return AnaResponse(
                 text="Para verificar disponibilidade, preciso das datas de entrada e saída. "
                      "Por exemplo: *'Tem vaga de 10 a 12 de abril?'*",
                 metadata={"intent": "availability_check", "missing_dates": True}
             )
-        
+
         # TODO: Actually check availability in PMS
         # For now, mock response
         check_in = datetime.fromisoformat(dates[0].value).date()
         check_out = datetime.fromisoformat(dates[1].value).date()
-        
+
         return AnaResponse(
             text=f"✅ Ótima notícia! Temos disponibilidade para o período "
                  f"de {check_in.strftime('%d/%m')} a {check_out.strftime('%d/%m')}!\n\n"
@@ -289,7 +285,7 @@ class ImprovedAnaAgent:
                 "check_out": check_out.isoformat()
             }
         )
-    
+
     async def _handle_amenities_info(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Provide information about hotel amenities."""
         return AnaResponse(
@@ -313,7 +309,7 @@ class ImprovedAnaAgent:
             media_urls=["https://hotelpassarim.com.br/tour-virtual"],
             metadata={"intent": "amenities_info"}
         )
-    
+
     async def _handle_restaurant_info(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Provide restaurant information."""
         return AnaResponse(
@@ -330,7 +326,7 @@ class ImprovedAnaAgent:
                  "🍕 *Room Service:* até 22h",
             metadata={"intent": "restaurant_info"}
         )
-    
+
     async def _handle_wifi_info(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Provide WiFi information."""
         return AnaResponse(
@@ -343,12 +339,12 @@ class ImprovedAnaAgent:
                  "Problemas para conectar? Estamos aqui para ajudar! 😊",
             metadata={"intent": "wifi_info"}
         )
-    
+
     async def _handle_pasta_rotation(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Handle pasta rotation inquiries."""
         # Check if they mentioned a date
         dates = [e for e in nlp_result.entities if e.type == "date"]
-        
+
         if dates:
             date_obj = datetime.fromisoformat(dates[0].value).date()
             # Check if it's Friday or Saturday
@@ -359,7 +355,7 @@ class ImprovedAnaAgent:
                          f"Que tal escolher uma sexta ou sábado?",
                     metadata={"intent": "pasta_rotation", "invalid_date": True}
                 )
-        
+
         return AnaResponse(
             text="🍝 *Rodízio de Massas Artesanais*\n\n"
                  "📅 Sextas e Sábados, 19h às 22h\n\n"
@@ -378,7 +374,7 @@ class ImprovedAnaAgent:
                  "Gostaria de fazer uma reserva?",
             metadata={"intent": "pasta_rotation"}
         )
-    
+
     async def _handle_complaint(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Handle complaints with care."""
         return AnaResponse(
@@ -393,7 +389,7 @@ class ImprovedAnaAgent:
                 "sentiment": nlp_result.sentiment
             }
         )
-    
+
     async def _handle_thanks(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Handle thank you messages."""
         return AnaResponse(
@@ -402,41 +398,41 @@ class ImprovedAnaAgent:
                  "Estou sempre aqui para tornar sua experiência no Hotel Passarim ainda melhor! 🏨✨",
             metadata={"intent": "thanks"}
         )
-    
+
     async def _handle_unknown(self, nlp_result, context, media_url, location) -> AnaResponse:
         """Handle unknown intents."""
         import random
         text = random.choice(self.response_templates[Intent.UNKNOWN])
-        
+
         # If this is the second unknown in a row, offer human help
         if context.metadata.get("last_intent") == "unknown":
             text += "\n\nOu se preferir, posso chamar alguém da nossa equipe para ajudar! 😊"
-            
+
         return AnaResponse(
             text=text,
             metadata={"intent": "unknown"}
         )
-    
+
     def _get_or_create_context(self, phone: str, additional_context: Optional[Dict] = None) -> ConversationContext:
         """Get existing context or create new one."""
         if phone in self.contexts:
             return self.contexts[phone]
-        
+
         context = ConversationContext(
             guest_phone=phone,
             guest_name=additional_context.get("name") if additional_context else None,
             preferences=additional_context.get("preferences", {}) if additional_context else {}
         )
-        
+
         self.contexts[phone] = context
         return context
-    
+
     def _get_weekday_name(self, weekday: int) -> str:
         """Get weekday name in Portuguese."""
-        names = ["segunda-feira", "terça-feira", "quarta-feira", 
-                "quinta-feira", "sexta-feira", "sábado", "domingo"]
+        names = ["segunda-feira", "terça-feira", "quarta-feira",
+                 "quinta-feira", "sexta-feira", "sábado", "domingo"]
         return names[weekday]
-    
+
     async def handle_media(self, phone: str, media_url: str, media_type: str) -> AnaResponse:
         """Handle media messages (images, documents, etc)."""
         if media_type.startswith("image/"):
@@ -450,7 +446,7 @@ class ImprovedAnaAgent:
                      "Por enquanto, pode me dizer como posso ajudar?",
                 metadata={"media_received": True, "media_type": media_type}
             )
-        
+
         elif media_type == "application/pdf":
             # TODO: Handle PDF documents
             return AnaResponse(
@@ -459,20 +455,20 @@ class ImprovedAnaAgent:
                      "É um documento para check-in?",
                 metadata={"media_received": True, "media_type": media_type}
             )
-        
+
         else:
             return AnaResponse(
                 text="Recebi seu arquivo! Por enquanto, trabalho melhor com textos. "
                      "Como posso ajudar você?",
                 metadata={"media_received": True, "media_type": media_type}
             )
-    
+
     async def get_proactive_message(self, phone: str, trigger: str) -> Optional[AnaResponse]:
         """Generate proactive messages based on triggers."""
         context = self.contexts.get(phone)
         if not context:
             return None
-        
+
         if trigger == "pre_arrival":
             # 1 day before check-in
             return AnaResponse(
@@ -485,7 +481,7 @@ class ImprovedAnaAgent:
                 action="pre_arrival_reminder",
                 metadata={"trigger": "pre_arrival"}
             )
-        
+
         elif trigger == "post_checkout":
             # After checkout
             return AnaResponse(
@@ -496,7 +492,7 @@ class ImprovedAnaAgent:
                 action="feedback_request",
                 metadata={"trigger": "post_checkout"}
             )
-        
+
         elif trigger == "special_offer":
             # Based on preferences
             if context.preferences.get("likes_pasta"):
@@ -508,5 +504,5 @@ class ImprovedAnaAgent:
                     action="special_offer",
                     metadata={"trigger": "special_offer", "offer_type": "pasta"}
                 )
-        
+
         return None

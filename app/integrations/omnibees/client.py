@@ -1,17 +1,15 @@
 """Omnibees integration client for hotel reservations."""
 
-import asyncio
-from datetime import date, datetime
-from typing import Dict, List, Optional
-from decimal import Decimal
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
+from typing import Dict, List, Optional
 
 import httpx
-from pydantic import BaseModel
 
-from app.core.logging import get_logger
 from app.core.config import settings
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -89,16 +87,16 @@ class Reservation:
 
 class OmnibeesClient:
     """Client for Omnibees Channel Manager integration."""
-    
+
     def __init__(self):
         """Initialize Omnibees client."""
         self.base_url = settings.get("OMNIBEES_API_URL", "https://api.omnibees.com/v2")
         self.api_key = settings.get("OMNIBEES_API_KEY")
         self.hotel_id = settings.get("OMNIBEES_HOTEL_ID", "passarim-hotel")
-        
+
         if not self.api_key:
             logger.warning("Omnibees API key not configured")
-        
+
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={
@@ -108,13 +106,13 @@ class OmnibeesClient:
             },
             timeout=30.0
         )
-    
+
     async def check_availability(
-        self,
-        check_in: date,
-        check_out: date,
-        guests: int,
-        room_type: Optional[str] = None
+            self,
+            check_in: date,
+            check_out: date,
+            guests: int,
+            room_type: Optional[str] = None
     ) -> List[Availability]:
         """
         Check room availability for date range.
@@ -131,10 +129,10 @@ class OmnibeesClient:
         try:
             # In production, this would call the real API
             # For now, return mock data
-            
+
             if settings.app_env == "development":
                 return self._mock_availability(check_in, check_out, guests, room_type)
-            
+
             # Real API call
             response = await self.client.get(
                 f"/hotels/{self.hotel_id}/availability",
@@ -145,10 +143,10 @@ class OmnibeesClient:
                     "room_type": room_type
                 }
             )
-            
+
             response.raise_for_status()
             data = response.json()
-            
+
             return [
                 Availability(
                     room_type=item["room_type"],
@@ -160,7 +158,7 @@ class OmnibeesClient:
                 )
                 for item in data["availability"]
             ]
-            
+
         except Exception as e:
             logger.error(
                 "Error checking availability",
@@ -170,16 +168,16 @@ class OmnibeesClient:
             )
             # Return mock data on error
             return self._mock_availability(check_in, check_out, guests, room_type)
-    
+
     async def create_reservation(
-        self,
-        check_in: date,
-        check_out: date,
-        room_type: str,
-        guests: List[Guest],
-        meal_plan: Optional[str] = None,
-        special_requests: Optional[str] = None,
-        source_channel: str = "whatsapp"
+            self,
+            check_in: date,
+            check_out: date,
+            room_type: str,
+            guests: List[Guest],
+            meal_plan: Optional[str] = None,
+            special_requests: Optional[str] = None,
+            source_channel: str = "whatsapp"
     ) -> Reservation:
         """
         Create a new reservation.
@@ -201,7 +199,7 @@ class OmnibeesClient:
                 return self._mock_create_reservation(
                     check_in, check_out, room_type, guests
                 )
-            
+
             # Prepare reservation data
             reservation_data = {
                 "hotel_id": self.hotel_id,
@@ -225,16 +223,16 @@ class OmnibeesClient:
                 "special_requests": special_requests,
                 "source": source_channel
             }
-            
+
             # Create reservation
             response = await self.client.post(
                 f"/hotels/{self.hotel_id}/reservations",
                 json=reservation_data
             )
-            
+
             response.raise_for_status()
             data = response.json()
-            
+
             return Reservation(
                 id=data["reservation_id"],
                 hotel_id=self.hotel_id,
@@ -248,29 +246,29 @@ class OmnibeesClient:
                 notes=special_requests,
                 created_at=datetime.now()
             )
-            
+
         except Exception as e:
             logger.error("Error creating reservation", error=str(e))
             raise
-    
+
     async def get_reservation(self, reservation_id: str) -> Optional[Reservation]:
         """Get reservation details by ID."""
         try:
             if settings.app_env == "development":
                 return self._mock_get_reservation(reservation_id)
-            
+
             response = await self.client.get(
                 f"/hotels/{self.hotel_id}/reservations/{reservation_id}"
             )
-            
+
             if response.status_code == 404:
                 return None
-            
+
             response.raise_for_status()
             data = response.json()
-            
+
             return self._parse_reservation(data)
-            
+
         except Exception as e:
             logger.error(
                 "Error fetching reservation",
@@ -278,11 +276,11 @@ class OmnibeesClient:
                 reservation_id=reservation_id
             )
             return None
-    
+
     async def update_reservation(
-        self,
-        reservation_id: str,
-        updates: Dict
+            self,
+            reservation_id: str,
+            updates: Dict
     ) -> Optional[Reservation]:
         """Update existing reservation."""
         try:
@@ -294,17 +292,17 @@ class OmnibeesClient:
                         if hasattr(reservation, key):
                             setattr(reservation, key, value)
                 return reservation
-            
+
             response = await self.client.patch(
                 f"/hotels/{self.hotel_id}/reservations/{reservation_id}",
                 json=updates
             )
-            
+
             response.raise_for_status()
             data = response.json()
-            
+
             return self._parse_reservation(data)
-            
+
         except Exception as e:
             logger.error(
                 "Error updating reservation",
@@ -312,24 +310,24 @@ class OmnibeesClient:
                 reservation_id=reservation_id
             )
             return None
-    
+
     async def cancel_reservation(
-        self,
-        reservation_id: str,
-        reason: str
+            self,
+            reservation_id: str,
+            reason: str
     ) -> bool:
         """Cancel a reservation."""
         try:
             if settings.app_env == "development":
                 return True
-            
+
             response = await self.client.post(
                 f"/hotels/{self.hotel_id}/reservations/{reservation_id}/cancel",
                 json={"reason": reason}
             )
-            
+
             return response.status_code == 200
-            
+
         except Exception as e:
             logger.error(
                 "Error cancelling reservation",
@@ -337,7 +335,7 @@ class OmnibeesClient:
                 reservation_id=reservation_id
             )
             return False
-    
+
     async def get_room_types(self) -> List[Dict]:
         """Get all room types for the hotel."""
         try:
@@ -358,28 +356,28 @@ class OmnibeesClient:
                         "amenities": ["ar-condicionado", "tv", "frigobar", "wifi", "varanda"]
                     }
                 ]
-            
+
             response = await self.client.get(f"/hotels/{self.hotel_id}/room-types")
             response.raise_for_status()
-            
+
             return response.json()["room_types"]
-            
+
         except Exception as e:
             logger.error("Error fetching room types", error=str(e))
             return []
-    
+
     def generate_booking_link(
-        self,
-        check_in: date,
-        check_out: date,
-        adults: int,
-        children: int = 0,
-        room_type: Optional[str] = None,
-        promo_code: Optional[str] = None
+            self,
+            check_in: date,
+            check_out: date,
+            adults: int,
+            children: int = 0,
+            room_type: Optional[str] = None,
+            promo_code: Optional[str] = None
     ) -> str:
         """Generate direct booking link for Omnibees."""
         base_url = f"https://booking.omnibees.com/chain"
-        
+
         params = {
             "c": self.hotel_id,
             "checkin": check_in.strftime("%d/%m/%Y"),
@@ -387,34 +385,34 @@ class OmnibeesClient:
             "ad": adults,
             "ch": children
         }
-        
+
         if room_type:
             params["room"] = room_type
-        
+
         if promo_code:
             params["promo"] = promo_code
-        
+
         # Build query string
         query = "&".join(f"{k}={v}" for k, v in params.items())
-        
+
         return f"{base_url}?{query}"
-    
+
     # Mock methods for development
-    
+
     def _mock_availability(
-        self,
-        check_in: date,
-        check_out: date,
-        guests: int,
-        room_type: Optional[str]
+            self,
+            check_in: date,
+            check_out: date,
+            guests: int,
+            room_type: Optional[str]
     ) -> List[Availability]:
         """Mock availability data for development."""
         # Calculate number of nights
         nights = (check_out - check_in).days
-        
+
         # Mock availability data
         availabilities = []
-        
+
         if not room_type or room_type == "TERREO":
             availabilities.append(
                 Availability(
@@ -429,7 +427,7 @@ class OmnibeesClient:
                     max_rate=Decimal("350.00")
                 )
             )
-        
+
         if not room_type or room_type == "SUPERIOR":
             availabilities.append(
                 Availability(
@@ -444,23 +442,23 @@ class OmnibeesClient:
                     max_rate=Decimal("380.00")
                 )
             )
-        
+
         return availabilities
-    
+
     def _mock_create_reservation(
-        self,
-        check_in: date,
-        check_out: date,
-        room_type: str,
-        guests: List[Guest]
+            self,
+            check_in: date,
+            check_out: date,
+            room_type: str,
+            guests: List[Guest]
     ) -> Reservation:
         """Mock reservation creation for development."""
         import uuid
-        
+
         nights = (check_out - check_in).days
         rate = Decimal("290.00") if room_type == "TERREO" else Decimal("320.00")
         total = rate * nights
-        
+
         return Reservation(
             id=f"RES{uuid.uuid4().hex[:8].upper()}",
             hotel_id=self.hotel_id,
@@ -478,12 +476,12 @@ class OmnibeesClient:
             notes=None,
             created_at=datetime.now()
         )
-    
+
     def _mock_get_reservation(self, reservation_id: str) -> Optional[Reservation]:
         """Mock get reservation for development."""
         if not reservation_id.startswith("RES"):
             return None
-        
+
         # Return mock reservation
         return Reservation(
             id=reservation_id,
@@ -509,7 +507,7 @@ class OmnibeesClient:
             notes="Chegada após 20h",
             created_at=datetime.now()
         )
-    
+
     def _parse_reservation(self, data: Dict) -> Reservation:
         """Parse reservation data from API response."""
         return Reservation(
@@ -534,11 +532,11 @@ class OmnibeesClient:
             notes=data.get("notes"),
             created_at=datetime.fromisoformat(data["created_at"])
         )
-    
+
     async def __aenter__(self):
         """Async context manager entry."""
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.client.aclose()
@@ -547,9 +545,9 @@ class OmnibeesClient:
 # Convenience functions for quick access
 
 async def check_hotel_availability(
-    check_in: date,
-    check_out: date,
-    guests: int
+        check_in: date,
+        check_out: date,
+        guests: int
 ) -> List[Availability]:
     """Quick function to check availability."""
     async with OmnibeesClient() as client:
@@ -557,12 +555,12 @@ async def check_hotel_availability(
 
 
 async def create_booking(
-    check_in: date,
-    check_out: date,
-    room_type: str,
-    guest_name: str,
-    guest_phone: str,
-    guest_document: str
+        check_in: date,
+        check_out: date,
+        room_type: str,
+        guest_name: str,
+        guest_phone: str,
+        guest_document: str
 ) -> Reservation:
     """Quick function to create a booking."""
     async with OmnibeesClient() as client:
@@ -580,10 +578,10 @@ async def create_booking(
 
 
 def get_booking_link(
-    check_in: date,
-    check_out: date,
-    adults: int,
-    children: int = 0
+        check_in: date,
+        check_out: date,
+        adults: int,
+        children: int = 0
 ) -> str:
     """Get direct booking link."""
     client = OmnibeesClient()

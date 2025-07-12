@@ -1,9 +1,9 @@
 """Conversation and message models for ARIA Hotel AI."""
 
 from datetime import datetime
+from enum import Enum
 from typing import Dict, List, Optional, Any
 from uuid import UUID, uuid4
-from enum import Enum
 
 from pydantic import BaseModel, Field
 
@@ -51,11 +51,11 @@ class Message(BaseModel):
     message_type: MessageType = MessageType.TEXT
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     # For media messages
     media_url: Optional[str] = None
     media_mime_type: Optional[str] = None
-    
+
     # For AI messages
     confidence_score: Optional[float] = None
     intent: Optional[str] = None
@@ -69,42 +69,42 @@ class Conversation(BaseModel):
     channel: ConversationChannel
     status: ConversationStatus = ConversationStatus.ACTIVE
     language: str = "pt"
-    
+
     # Contact info for non-registered guests
     phone_number: Optional[str] = None
     email: Optional[str] = None
     name: Optional[str] = None
-    
+
     # Conversation context
     context: Dict[str, Any] = Field(default_factory=dict)
     tags: List[str] = Field(default_factory=list)
-    
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     last_message_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
-    
+
     # Messages
     messages: List[Message] = Field(default_factory=list)
-    
+
     # Analytics
     message_count: int = 0
     ai_message_count: int = 0
     user_message_count: int = 0
-    
+
     def add_message(self, message: Message) -> None:
         """Add a message to the conversation."""
         self.messages.append(message)
         self.last_message_at = message.created_at
         self.updated_at = datetime.now()
         self.message_count += 1
-        
+
         if message.role == MessageRole.ASSISTANT:
             self.ai_message_count += 1
         elif message.role == MessageRole.USER:
             self.user_message_count += 1
-    
+
     def get_context_summary(self) -> str:
         """Get a summary of the conversation context."""
         # This could be enhanced with AI summarization
@@ -113,7 +113,7 @@ class Conversation(BaseModel):
             f"{msg.role.value}: {msg.content[:100]}..."
             for msg in recent_messages
         ])
-    
+
     def mark_resolved(self) -> None:
         """Mark conversation as resolved."""
         self.status = ConversationStatus.RESOLVED

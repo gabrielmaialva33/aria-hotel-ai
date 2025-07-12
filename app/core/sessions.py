@@ -255,11 +255,11 @@ class SessionManager:
         }
 
     async def update_guest_info(
-        self,
-        phone: str,
-        name: Optional[str] = None,
-        guest_id: Optional[str] = None,
-        preferences: Optional[Dict] = None
+            self,
+            phone: str,
+            name: Optional[str] = None,
+            guest_id: Optional[str] = None,
+            preferences: Optional[Dict] = None
     ):
         """Update guest information in session."""
         session = await self.get_session(phone)

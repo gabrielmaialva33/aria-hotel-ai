@@ -1,23 +1,21 @@
 """Payment gateway integration for multiple providers."""
 
-import asyncio
 import hashlib
 import hmac
-import json
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
-from uuid import UUID, uuid4
-from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, Optional
+from uuid import uuid4
 
 import httpx
+from app.domain.shared.value_objects import Money
 from cryptography.fernet import Fernet
 
-from app.core.logging import get_logger
 from app.core.config import settings
-from app.domain.shared.value_objects import Money
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -55,18 +53,18 @@ class PaymentRequest:
     metadata: Optional[Dict] = None
     return_url: Optional[str] = None
     webhook_url: Optional[str] = None
-    
+
     # Card details (if applicable)
     card_number: Optional[str] = None
     card_holder: Optional[str] = None
     card_expiry: Optional[str] = None
     card_cvv: Optional[str] = None
     card_token: Optional[str] = None
-    
+
     # PIX details
     pix_key: Optional[str] = None
     pix_expiration: Optional[int] = 3600  # seconds
-    
+
     # Customer details
     customer_email: Optional[str] = None
     customer_phone: Optional[str] = None
@@ -82,7 +80,7 @@ class PaymentResponse:
     method: PaymentMethod
     provider: str
     created_at: datetime
-    
+
     # Additional data based on method
     authorization_code: Optional[str] = None
     qr_code: Optional[str] = None
@@ -90,38 +88,38 @@ class PaymentResponse:
     pix_key: Optional[str] = None
     boleto_url: Optional[str] = None
     boleto_barcode: Optional[str] = None
-    
+
     # Error info
     error_code: Optional[str] = None
     error_message: Optional[str] = None
-    
+
     # Raw response for debugging
     raw_response: Optional[Dict] = None
 
 
 class PaymentProvider(ABC):
     """Abstract base class for payment providers."""
-    
+
     @abstractmethod
     async def process_payment(self, request: PaymentRequest) -> PaymentResponse:
         """Process a payment request."""
         pass
-    
+
     @abstractmethod
     async def get_payment_status(self, transaction_id: str) -> PaymentResponse:
         """Get payment status by transaction ID."""
         pass
-    
+
     @abstractmethod
     async def refund_payment(
-        self,
-        transaction_id: str,
-        amount: Optional[Money] = None,
-        reason: Optional[str] = None
+            self,
+            transaction_id: str,
+            amount: Optional[Money] = None,
+            reason: Optional[str] = None
     ) -> PaymentResponse:
         """Refund a payment (full or partial)."""
         pass
-    
+
     @abstractmethod
     async def cancel_payment(self, transaction_id: str) -> PaymentResponse:
         """Cancel a pending payment."""
@@ -130,12 +128,12 @@ class PaymentProvider(ABC):
 
 class StripeProvider(PaymentProvider):
     """Stripe payment provider implementation."""
-    
+
     def __init__(self):
         self.api_key = settings.get("STRIPE_API_KEY")
         self.webhook_secret = settings.get("STRIPE_WEBHOOK_SECRET")
         self.base_url = "https://api.stripe.com/v1"
-        
+
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={
@@ -143,7 +141,7 @@ class StripeProvider(PaymentProvider):
                 "Content-Type": "application/x-www-form-urlencoded"
             }
         )
-    
+
     async def process_payment(self, request: PaymentRequest) -> PaymentResponse:
         """Process payment through Stripe."""
         try:
@@ -155,7 +153,7 @@ class StripeProvider(PaymentProvider):
                 "metadata[order_id]": request.order_id,
                 "metadata[customer_id]": request.customer_id
             }
-            
+
             # Add payment method
             if request.card_token:
                 data["payment_method"] = request.card_token
@@ -164,12 +162,12 @@ class StripeProvider(PaymentProvider):
                 # Stripe doesn't support PIX directly
                 # Would need to use a local provider
                 pass
-            
+
             response = await self.client.post("/payment_intents", data=data)
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             return PaymentResponse(
                 transaction_id=result["id"],
                 status=self._map_stripe_status(result["status"]),
@@ -180,7 +178,7 @@ class StripeProvider(PaymentProvider):
                 authorization_code=result.get("charges", {}).get("data", [{}])[0].get("id"),
                 raw_response=result
             )
-            
+
         except Exception as e:
             logger.error("Stripe payment failed", error=str(e))
             return PaymentResponse(
@@ -192,15 +190,15 @@ class StripeProvider(PaymentProvider):
                 created_at=datetime.now(),
                 error_message=str(e)
             )
-    
+
     async def get_payment_status(self, transaction_id: str) -> PaymentResponse:
         """Get payment status from Stripe."""
         try:
             response = await self.client.get(f"/payment_intents/{transaction_id}")
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             return PaymentResponse(
                 transaction_id=result["id"],
                 status=self._map_stripe_status(result["status"]),
@@ -210,32 +208,32 @@ class StripeProvider(PaymentProvider):
                 created_at=datetime.fromtimestamp(result["created"]),
                 raw_response=result
             )
-            
+
         except Exception as e:
             logger.error("Failed to get Stripe payment status", error=str(e))
             raise
-    
+
     async def refund_payment(
-        self,
-        transaction_id: str,
-        amount: Optional[Money] = None,
-        reason: Optional[str] = None
+            self,
+            transaction_id: str,
+            amount: Optional[Money] = None,
+            reason: Optional[str] = None
     ) -> PaymentResponse:
         """Refund a Stripe payment."""
         try:
             data = {"payment_intent": transaction_id}
-            
+
             if amount:
                 data["amount"] = int(amount.amount * 100)
-            
+
             if reason:
                 data["reason"] = reason
-            
+
             response = await self.client.post("/refunds", data=data)
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             return PaymentResponse(
                 transaction_id=result["id"],
                 status=PaymentStatus.REFUNDED,
@@ -245,11 +243,11 @@ class StripeProvider(PaymentProvider):
                 created_at=datetime.fromtimestamp(result["created"]),
                 raw_response=result
             )
-            
+
         except Exception as e:
             logger.error("Stripe refund failed", error=str(e))
             raise
-    
+
     async def cancel_payment(self, transaction_id: str) -> PaymentResponse:
         """Cancel a Stripe payment."""
         try:
@@ -257,9 +255,9 @@ class StripeProvider(PaymentProvider):
                 f"/payment_intents/{transaction_id}/cancel"
             )
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             return PaymentResponse(
                 transaction_id=result["id"],
                 status=PaymentStatus.CANCELLED,
@@ -269,11 +267,11 @@ class StripeProvider(PaymentProvider):
                 created_at=datetime.now(),
                 raw_response=result
             )
-            
+
         except Exception as e:
             logger.error("Stripe cancellation failed", error=str(e))
             raise
-    
+
     def _map_stripe_status(self, stripe_status: str) -> PaymentStatus:
         """Map Stripe status to our status."""
         mapping = {
@@ -291,12 +289,12 @@ class StripeProvider(PaymentProvider):
 
 class MercadoPagoProvider(PaymentProvider):
     """MercadoPago payment provider (popular in Brazil)."""
-    
+
     def __init__(self):
         self.access_token = settings.get("MERCADOPAGO_ACCESS_TOKEN")
         self.public_key = settings.get("MERCADOPAGO_PUBLIC_KEY")
         self.base_url = "https://api.mercadopago.com"
-        
+
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={
@@ -304,7 +302,7 @@ class MercadoPagoProvider(PaymentProvider):
                 "Content-Type": "application/json"
             }
         )
-    
+
     async def process_payment(self, request: PaymentRequest) -> PaymentResponse:
         """Process payment through MercadoPago."""
         try:
@@ -314,7 +312,7 @@ class MercadoPagoProvider(PaymentProvider):
                 return await self._process_card_payment(request)
             else:
                 raise ValueError(f"Unsupported payment method: {request.method}")
-            
+
         except Exception as e:
             logger.error("MercadoPago payment failed", error=str(e))
             return PaymentResponse(
@@ -326,7 +324,7 @@ class MercadoPagoProvider(PaymentProvider):
                 created_at=datetime.now(),
                 error_message=str(e)
             )
-    
+
     async def _process_pix_payment(self, request: PaymentRequest) -> PaymentResponse:
         """Process PIX payment through MercadoPago."""
         data = {
@@ -341,18 +339,18 @@ class MercadoPagoProvider(PaymentProvider):
                 "customer_id": request.customer_id
             },
             "date_of_expiration": (
-                datetime.now() + timedelta(seconds=request.pix_expiration)
+                    datetime.now() + timedelta(seconds=request.pix_expiration)
             ).isoformat()
         }
-        
+
         response = await self.client.post("/v1/payments", json=data)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         # Extract PIX data
         qr_code = result.get("point_of_interaction", {}).get("transaction_data", {})
-        
+
         return PaymentResponse(
             transaction_id=str(result["id"]),
             status=self._map_mp_status(result["status"]),
@@ -365,7 +363,7 @@ class MercadoPagoProvider(PaymentProvider):
             pix_key=qr_code.get("qr_code"),
             raw_response=result
         )
-    
+
     async def _process_card_payment(self, request: PaymentRequest) -> PaymentResponse:
         """Process card payment through MercadoPago."""
         data = {
@@ -382,12 +380,12 @@ class MercadoPagoProvider(PaymentProvider):
                 "customer_id": request.customer_id
             }
         }
-        
+
         response = await self.client.post("/v1/payments", json=data)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return PaymentResponse(
             transaction_id=str(result["id"]),
             status=self._map_mp_status(result["status"]),
@@ -398,15 +396,15 @@ class MercadoPagoProvider(PaymentProvider):
             authorization_code=result.get("authorization_code"),
             raw_response=result
         )
-    
+
     async def get_payment_status(self, transaction_id: str) -> PaymentResponse:
         """Get payment status from MercadoPago."""
         try:
             response = await self.client.get(f"/v1/payments/{transaction_id}")
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             return PaymentResponse(
                 transaction_id=str(result["id"]),
                 status=self._map_mp_status(result["status"]),
@@ -416,31 +414,31 @@ class MercadoPagoProvider(PaymentProvider):
                 created_at=datetime.fromisoformat(result["date_created"]),
                 raw_response=result
             )
-            
+
         except Exception as e:
             logger.error("Failed to get MercadoPago payment status", error=str(e))
             raise
-    
+
     async def refund_payment(
-        self,
-        transaction_id: str,
-        amount: Optional[Money] = None,
-        reason: Optional[str] = None
+            self,
+            transaction_id: str,
+            amount: Optional[Money] = None,
+            reason: Optional[str] = None
     ) -> PaymentResponse:
         """Refund a MercadoPago payment."""
         try:
             data = {}
             if amount:
                 data["amount"] = float(amount.amount)
-            
+
             response = await self.client.post(
                 f"/v1/payments/{transaction_id}/refunds",
                 json=data
             )
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             return PaymentResponse(
                 transaction_id=str(result["id"]),
                 status=PaymentStatus.REFUNDED,
@@ -450,11 +448,11 @@ class MercadoPagoProvider(PaymentProvider):
                 created_at=datetime.fromisoformat(result["date_created"]),
                 raw_response=result
             )
-            
+
         except Exception as e:
             logger.error("MercadoPago refund failed", error=str(e))
             raise
-    
+
     async def cancel_payment(self, transaction_id: str) -> PaymentResponse:
         """Cancel a MercadoPago payment."""
         try:
@@ -463,9 +461,9 @@ class MercadoPagoProvider(PaymentProvider):
                 json={"status": "cancelled"}
             )
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             return PaymentResponse(
                 transaction_id=str(result["id"]),
                 status=PaymentStatus.CANCELLED,
@@ -475,11 +473,11 @@ class MercadoPagoProvider(PaymentProvider):
                 created_at=datetime.now(),
                 raw_response=result
             )
-            
+
         except Exception as e:
             logger.error("MercadoPago cancellation failed", error=str(e))
             raise
-    
+
     def _map_mp_status(self, mp_status: str) -> PaymentStatus:
         """Map MercadoPago status to our status."""
         mapping = {
@@ -494,7 +492,7 @@ class MercadoPagoProvider(PaymentProvider):
             "charged_back": PaymentStatus.REFUNDED
         }
         return mapping.get(mp_status, PaymentStatus.PENDING)
-    
+
     def _map_mp_payment_method(self, method_id: str) -> PaymentMethod:
         """Map MercadoPago payment method to our enum."""
         if method_id == "pix":
@@ -509,24 +507,24 @@ class MercadoPagoProvider(PaymentProvider):
 
 class PaymentGateway:
     """Main payment gateway that routes to appropriate provider."""
-    
+
     def __init__(self):
         """Initialize payment gateway with providers."""
         self.providers: Dict[str, PaymentProvider] = {
             "stripe": StripeProvider(),
             "mercadopago": MercadoPagoProvider()
         }
-        
+
         # Encryption for sensitive data
         self.cipher_suite = Fernet(settings.get("PAYMENT_ENCRYPTION_KEY", Fernet.generate_key()))
-        
+
         # Transaction storage (would be database in production)
         self.transactions: Dict[str, PaymentResponse] = {}
-    
+
     async def process_payment(
-        self,
-        request: PaymentRequest,
-        provider: Optional[str] = None
+            self,
+            request: PaymentRequest,
+            provider: Optional[str] = None
     ) -> PaymentResponse:
         """
         Process a payment through the appropriate provider.
@@ -540,20 +538,20 @@ class PaymentGateway:
         """
         # Validate request
         self._validate_payment_request(request)
-        
+
         # Encrypt sensitive data
         if request.card_number:
             request.card_number = self._encrypt_data(request.card_number)
         if request.card_cvv:
             request.card_cvv = self._encrypt_data(request.card_cvv)
-        
+
         # Select provider
         if not provider:
             provider = self._select_provider(request)
-        
+
         if provider not in self.providers:
             raise ValueError(f"Unknown payment provider: {provider}")
-        
+
         # Process payment
         logger.info(
             "Processing payment",
@@ -562,13 +560,13 @@ class PaymentGateway:
             amount=float(request.amount.amount),
             order_id=request.order_id
         )
-        
+
         try:
             response = await self.providers[provider].process_payment(request)
-            
+
             # Store transaction
             self.transactions[response.transaction_id] = response
-            
+
             # Log result
             logger.info(
                 "Payment processed",
@@ -576,9 +574,9 @@ class PaymentGateway:
                 status=response.status.value,
                 provider=provider
             )
-            
+
             return response
-            
+
         except Exception as e:
             logger.error(
                 "Payment processing failed",
@@ -586,67 +584,67 @@ class PaymentGateway:
                 error=str(e)
             )
             raise
-    
+
     async def get_payment_status(
-        self,
-        transaction_id: str,
-        provider: Optional[str] = None
+            self,
+            transaction_id: str,
+            provider: Optional[str] = None
     ) -> PaymentResponse:
         """Get payment status by transaction ID."""
         # Check cache first
         if transaction_id in self.transactions:
             cached = self.transactions[transaction_id]
             provider = cached.provider
-        
+
         if not provider:
             # Try to determine provider from transaction ID format
             provider = self._detect_provider_from_id(transaction_id)
-        
+
         if not provider:
             raise ValueError("Cannot determine payment provider")
-        
+
         response = await self.providers[provider].get_payment_status(transaction_id)
-        
+
         # Update cache
         self.transactions[transaction_id] = response
-        
+
         return response
-    
+
     async def refund_payment(
-        self,
-        transaction_id: str,
-        amount: Optional[Money] = None,
-        reason: Optional[str] = None
+            self,
+            transaction_id: str,
+            amount: Optional[Money] = None,
+            reason: Optional[str] = None
     ) -> PaymentResponse:
         """Refund a payment."""
         # Get original transaction
         original = await self.get_payment_status(transaction_id)
-        
+
         if original.status not in [PaymentStatus.CAPTURED, PaymentStatus.PARTIALLY_REFUNDED]:
             raise ValueError(f"Cannot refund payment in status {original.status}")
-        
+
         provider = self.providers[original.provider]
         response = await provider.refund_payment(transaction_id, amount, reason)
-        
+
         # Update cache
         self.transactions[transaction_id] = response
-        
+
         logger.info(
             "Payment refunded",
             transaction_id=transaction_id,
             amount=float(amount.amount) if amount else "full",
             reason=reason
         )
-        
+
         return response
-    
+
     async def create_pix_payment(
-        self,
-        amount: Money,
-        customer_id: str,
-        order_id: str,
-        description: str,
-        expiration_minutes: int = 60
+            self,
+            amount: Money,
+            customer_id: str,
+            order_id: str,
+            description: str,
+            expiration_minutes: int = 60
     ) -> PaymentResponse:
         """Create a PIX payment with QR code."""
         request = PaymentRequest(
@@ -657,10 +655,10 @@ class PaymentGateway:
             description=description,
             pix_expiration=expiration_minutes * 60
         )
-        
+
         # PIX is only supported by MercadoPago in our implementation
         return await self.process_payment(request, provider="mercadopago")
-    
+
     def verify_webhook(self, provider: str, headers: Dict, body: bytes) -> bool:
         """Verify webhook signature from provider."""
         if provider == "stripe":
@@ -670,20 +668,20 @@ class PaymentGateway:
         else:
             logger.warning(f"Unknown provider for webhook verification: {provider}")
             return False
-    
+
     def _validate_payment_request(self, request: PaymentRequest):
         """Validate payment request data."""
         if request.amount.amount <= 0:
             raise ValueError("Payment amount must be positive")
-        
+
         if request.method == PaymentMethod.CREDIT_CARD:
             if not request.card_token and not request.card_number:
                 raise ValueError("Card token or card details required")
-        
+
         if request.method == PaymentMethod.PIX:
             if request.amount.currency != "BRL":
                 raise ValueError("PIX only supports BRL currency")
-    
+
     def _select_provider(self, request: PaymentRequest) -> str:
         """Select appropriate provider based on payment method and region."""
         if request.method == PaymentMethod.PIX:
@@ -692,7 +690,7 @@ class PaymentGateway:
             return "mercadopago"
         else:
             return "stripe"
-    
+
     def _detect_provider_from_id(self, transaction_id: str) -> Optional[str]:
         """Try to detect provider from transaction ID format."""
         if transaction_id.startswith("pi_") or transaction_id.startswith("ch_"):
@@ -700,31 +698,31 @@ class PaymentGateway:
         elif transaction_id.isdigit():
             return "mercadopago"
         return None
-    
+
     def _encrypt_data(self, data: str) -> str:
         """Encrypt sensitive data."""
         return self.cipher_suite.encrypt(data.encode()).decode()
-    
+
     def _decrypt_data(self, encrypted: str) -> str:
         """Decrypt sensitive data."""
         return self.cipher_suite.decrypt(encrypted.encode()).decode()
-    
+
     def _verify_stripe_webhook(self, headers: Dict, body: bytes) -> bool:
         """Verify Stripe webhook signature."""
         signature = headers.get("stripe-signature", "")
         secret = settings.get("STRIPE_WEBHOOK_SECRET", "")
-        
+
         # Parse signature
         elements = {}
         for element in signature.split(","):
             key, value = element.split("=", 1)
             elements[key] = value
-        
+
         # Verify timestamp
         timestamp = int(elements.get("t", "0"))
         if abs(datetime.now().timestamp() - timestamp) > 300:  # 5 minutes
             return False
-        
+
         # Verify signature
         signed_payload = f"{timestamp}.{body.decode()}"
         expected_signature = hmac.new(
@@ -732,34 +730,34 @@ class PaymentGateway:
             signed_payload.encode(),
             hashlib.sha256
         ).hexdigest()
-        
+
         return hmac.compare_digest(elements.get("v1", ""), expected_signature)
-    
+
     def _verify_mercadopago_webhook(self, headers: Dict, body: bytes) -> bool:
         """Verify MercadoPago webhook signature."""
         # MercadoPago uses x-signature header
         signature = headers.get("x-signature", "")
         secret = settings.get("MERCADOPAGO_WEBHOOK_SECRET", "")
-        
+
         # Extract TS and hash
         parts = {}
         for part in signature.split(","):
             if "=" in part:
                 key, value = part.split("=", 1)
                 parts[key.strip()] = value.strip()
-        
+
         # Verify
         ts = parts.get("ts", "")
         v1 = parts.get("v1", "")
-        
+
         signed_template = f"id:{body.decode()};request-id:{headers.get('x-request-id', '')};ts:{ts};"
-        
+
         expected = hmac.new(
             secret.encode(),
             signed_template.encode(),
             hashlib.sha256
         ).hexdigest()
-        
+
         return hmac.compare_digest(v1, expected)
 
 
@@ -770,8 +768,8 @@ _payment_gateway = None
 def get_payment_gateway() -> PaymentGateway:
     """Get or create payment gateway instance."""
     global _payment_gateway
-    
+
     if _payment_gateway is None:
         _payment_gateway = PaymentGateway()
-    
+
     return _payment_gateway

@@ -1,9 +1,9 @@
 """Guest models for ARIA Hotel AI."""
 
 from datetime import date, datetime
+from enum import Enum
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
-from enum import Enum
 
 from pydantic import BaseModel, Field, EmailStr
 
@@ -66,8 +66,8 @@ class Guest(BaseModel):
     def is_vip(self) -> bool:
         """Check if guest is VIP."""
         return (
-            self.status == GuestStatus.VIP or
-            (self.loyalty_program and self.loyalty_program.tier in [LoyaltyTier.GOLD, LoyaltyTier.PLATINUM])
+                self.status == GuestStatus.VIP or
+                (self.loyalty_program and self.loyalty_program.tier in [LoyaltyTier.GOLD, LoyaltyTier.PLATINUM])
         )
 
     def can_book(self) -> bool:
@@ -78,21 +78,21 @@ class Guest(BaseModel):
         """Calculate guest age."""
         if not self.birthdate:
             return None
-        
+
         today = date.today()
         age = today.year - self.birthdate.year
-        
+
         # Adjust if birthday hasn't occurred this year
         if (today.month, today.day) < (self.birthdate.month, self.birthdate.day):
             age -= 1
-        
+
         return age
 
     def is_birthday_month(self) -> bool:
         """Check if current month is guest's birthday month."""
         if not self.birthdate:
             return False
-        
+
         return self.birthdate.month == date.today().month
 
 

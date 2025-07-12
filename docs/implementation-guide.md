@@ -142,30 +142,31 @@ router = APIRouter()
 whatsapp = WhatsAppClient()
 ana = AnaAgent()
 
+
 @router.post("/webhooks/whatsapp")
 async def handle_whatsapp_message(request: Request):
     """Processa mensagens recebidas do WhatsApp"""
     data = await request.form()
-    
+
     # Extrai dados da mensagem
     from_number = data.get("From", "").replace("whatsapp:", "")
     message_body = data.get("Body", "")
     media_url = data.get("MediaUrl0")  # Primeira imagem, se houver
-    
+
     # Processa com a Ana
     response = await ana.process_message(
         phone=from_number,
         message=message_body,
         media_url=media_url
     )
-    
+
     # Envia resposta
     await whatsapp.send_message(
         to=from_number,
         body=response.text,
         media_urls=response.media_urls
     )
-    
+
     return {"status": "ok"}
 ```
 
@@ -179,6 +180,7 @@ from agno import Agent, Tool
 from aria.agents.ana.knowledge_base import HOTEL_INFO, PRICING_TABLE
 from aria.agents.ana.calculator import PricingCalculator
 from aria.agents.ana.prompts import ANA_SYSTEM_PROMPT
+
 
 class AnaAgent(Agent):
     def __init__(self):
@@ -194,25 +196,25 @@ class AnaAgent(Agent):
             ]
         )
         self.calculator = PricingCalculator()
-        
+
     @Tool(description="Calcula valores de hospedagem")
     async def calculate_pricing(
-        self,
-        check_in: str,
-        check_out: str,
-        adults: int,
-        children: List[int] = []
+            self,
+            check_in: str,
+            check_out: str,
+            adults: int,
+            children: List[int] = []
     ):
         """Calcula valores seguindo as regras do Hotel Passarim"""
         # Implementação do cálculo
         pass
-        
+
     @Tool(description="Verifica disponibilidade")
     async def check_availability(
-        self,
-        check_in: str,
-        check_out: str,
-        room_type: str = None
+            self,
+            check_in: str,
+            check_out: str,
+            room_type: str = None
     ):
         """Verifica disponibilidade de quartos"""
         # Integração com PMS ou banco local
@@ -262,6 +264,7 @@ from datetime import datetime, timedelta
 import redis.asyncio as redis
 from aria.core.config import settings
 
+
 class SessionManager:
     def __init__(self):
         self.redis = redis.from_url(
@@ -269,13 +272,13 @@ class SessionManager:
             decode_responses=True
         )
         self.ttl = timedelta(hours=24)
-        
+
     async def get_session(self, phone: str) -> dict:
         """Recupera sessão do usuário"""
         key = f"session:whatsapp:{phone}"
         data = await self.redis.get(key)
         return json.loads(data) if data else {}
-        
+
     async def save_session(self, phone: str, data: dict):
         """Salva sessão do usuário"""
         key = f"session:whatsapp:{phone}"
@@ -300,10 +303,12 @@ celery_app = Celery(
     backend=str(settings.redis_url)
 )
 
+
 @celery_app.task
 def process_check_in(reservation_id: str):
     """Processa check-in em background"""
     pass
+
 
 @celery_app.task
 def send_marketing_message(guest_id: str, template: str):
@@ -337,10 +342,11 @@ app.add_middleware(
 
 # Rotas
 app.include_router(whatsapp.router, tags=["webhooks"])
-app.include_router(voice.router, tags=["webhooks"]) 
+app.include_router(voice.router, tags=["webhooks"])
 app.include_router(reservations.router, prefix="/api/v1")
 app.include_router(services.router, prefix="/api/v1")
 app.include_router(payments.router, prefix="/api/v1")
+
 
 @app.get("/health")
 async def health_check():
@@ -350,24 +356,24 @@ async def health_check():
 ## Próximos Passos
 
 1. **Configurar ambiente Twilio**:
-   - Criar conta e obter credenciais
-   - Configurar sandbox WhatsApp
-   - Apontar webhooks para sua aplicação
+    - Criar conta e obter credenciais
+    - Configurar sandbox WhatsApp
+    - Apontar webhooks para sua aplicação
 
 2. **Implementar testes**:
-   - Testes unitários para cálculo de preços
-   - Testes de integração para WhatsApp
-   - Testes e2e para fluxos completos
+    - Testes unitários para cálculo de preços
+    - Testes de integração para WhatsApp
+    - Testes e2e para fluxos completos
 
 3. **Deploy inicial**:
-   - Dockerizar aplicação
-   - Deploy em cloud (AWS/GCP/Azure)
-   - Configurar domínio e SSL
+    - Dockerizar aplicação
+    - Deploy em cloud (AWS/GCP/Azure)
+    - Configurar domínio e SSL
 
 4. **Iteração e melhorias**:
-   - Coletar feedback
-   - Implementar novas features
-   - Otimizar performance
+    - Coletar feedback
+    - Implementar novas features
+    - Otimizar performance
 
 ## Estrutura de Diretórios Recomendada
 
