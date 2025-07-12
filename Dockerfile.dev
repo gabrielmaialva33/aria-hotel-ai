@@ -1,0 +1,37 @@
+# Development Dockerfile - Simplified
+FROM python:3.12-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Set working directory
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+
+# Create venv and install dependencies
+RUN uv venv .venv && \
+    . .venv/bin/activate && \
+    uv pip install -e .
+
+# Copy environment example if no .env exists
+COPY .env.example .env.example
+
+# Expose port
+EXPOSE 8000
+
+# Set Python path
+ENV PYTHONPATH=/app/src:$PYTHONPATH
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Default command
+CMD ["uvicorn", "aria.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
