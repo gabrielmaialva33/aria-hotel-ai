@@ -13,6 +13,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcloud-credentials.json
     env_file:
       - .env
     depends_on:
@@ -20,7 +21,7 @@ services:
       - redis
     volumes:
       - ./logs:/app/logs
-      - ~/.config/gcloud:/root/.config/gcloud
+      - ./gcloud-credentials.json:/app/gcloud-credentials.json
     restart: unless-stopped
     networks:
       - aria-network
