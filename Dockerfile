@@ -8,9 +8,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:$PATH"
+# Install uv directly to /usr/local/bin
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    mv /root/.cargo/bin/uv /usr/local/bin/uv || \
+    (find /root -name "uv" -type f -executable 2>/dev/null | head -1 | xargs -I {} mv {} /usr/local/bin/uv)
 
 # Set working directory
 WORKDIR /app
@@ -42,7 +43,7 @@ WORKDIR /app
 
 # Copy from builder
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /root/.cargo/bin/uv /usr/local/bin/uv
+COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
 
 # Copy application code
 COPY src/ ./src/

@@ -5,7 +5,7 @@ Uses pydantic-settings for environment variable management and validation.
 """
 
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 from pydantic import Field, PostgresDsn, RedisDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -51,9 +51,9 @@ class Settings(BaseSettings):
 
     # Security
     jwt_secret_key: str = Field(default="change-this-secret-key", description="JWT secret key")
-    allowed_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8000"],
-        description="Allowed CORS origins",
+    allowed_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8000",
+        description="Allowed CORS origins (comma-separated)",
     )
 
     # Hotel Integration
@@ -70,9 +70,9 @@ class Settings(BaseSettings):
     enable_proactive_messaging: bool = Field(default=True, description="Enable proactive messaging")
 
     # AI Model Configuration
-    default_llm_model: str = Field(default="gpt-4-turbo", description="Default LLM model")
-    vision_model: str = Field(default="gpt-4-vision-preview", description="Vision model")
-    fast_llm_model: str = Field(default="llama-3.3-70b-versatile", description="Fast LLM for simple tasks")
+    default_llm_model: str = Field(default="gemini-1.5-pro", description="Default LLM model")
+    vision_model: str = Field(default="gemini-1.5-pro-vision", description="Vision model")
+    fast_llm_model: str = Field(default="gemini-1.5-flash", description="Fast LLM for simple tasks")
     embedding_model: str = Field(default="text-embedding-3-small", description="Embedding model")
 
     @field_validator("app_env")
@@ -93,6 +93,7 @@ class Settings(BaseSettings):
         if v not in allowed:
             raise ValueError(f"log_level must be one of {allowed}")
         return v
+    
 
     @property
     def is_development(self) -> bool:
@@ -112,6 +113,11 @@ class Settings(BaseSettings):
     def get_webhook_url(self, endpoint: str) -> str:
         """Get full webhook URL for an endpoint."""
         return f"{self.webhook_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+    
+    @property
+    def allowed_origins_list(self) -> List[str]:
+        """Get allowed origins as a list."""
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
 
 @lru_cache

@@ -1,11 +1,17 @@
-"""Ana Agent - Main implementation using Agno framework."""
+"""Ana Agent - Main implementation."""
 
 import json
 from datetime import date, datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
+from dataclasses import dataclass
 
-from agno import Agent, Tool
-from pydantic import BaseModel
+# Try to import Google Generative AI
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    logger = None
 
 from aria.agents.ana.calculator import PricingCalculator
 from aria.agents.ana.knowledge_base import (
@@ -31,31 +37,62 @@ from aria.agents.ana.prompts import (
     WIFI_INFO,
 )
 from aria.core.logging import get_logger
+from aria.core.config import settings
 
 logger = get_logger(__name__)
 
 
-class AnaAgent(Agent):
+@dataclass
+class Tool:
+    """Simple tool definition."""
+    name: str
+    description: str
+    function: Callable
+
+
+class AnaAgent:
     """Ana - Virtual assistant for Hotel Passarim."""
     
     def __init__(self):
         """Initialize Ana agent with tools and configuration."""
-        super().__init__(
-            name="Ana",
-            system_prompt=ANA_SYSTEM_PROMPT,
-            model="gpt-4-turbo",
-            temperature=0.7,
-            tools=[
-                self.calculate_pricing,
-                self.check_availability,
-                self.generate_omnibees_link,
-                self.transfer_to_reception,
-                self.provide_hotel_info,
-                self.handle_pasta_reservation,
-            ]
-        )
+        self.name = "Ana"
+        self.system_prompt = ANA_SYSTEM_PROMPT
         self.calculator = PricingCalculator()
         self.contexts: Dict[str, ConversationContext] = {}
+        
+        # Register tools
+        self.tools = {
+            "calculate_pricing": Tool(
+                name="calculate_pricing",
+                description="Calculate accommodation pricing based on dates and guests",
+                function=self.calculate_pricing
+            ),
+            "check_availability": Tool(
+                name="check_availability", 
+                description="Check room availability for given dates",
+                function=self.check_availability
+            ),
+            "generate_omnibees_link": Tool(
+                name="generate_omnibees_link",
+                description="Generate Omnibees reservation link",
+                function=self.generate_omnibees_link
+            ),
+            "transfer_to_reception": Tool(
+                name="transfer_to_reception",
+                description="Transfer conversation to human reception staff",
+                function=self.transfer_to_reception
+            ),
+            "provide_hotel_info": Tool(
+                name="provide_hotel_info",
+                description="Provide hotel information like WiFi, restaurant hours, amenities",
+                function=self.provide_hotel_info
+            ),
+            "handle_pasta_reservation": Tool(
+                name="handle_pasta_reservation",
+                description="Handle pasta rotation reservation",
+                function=self.handle_pasta_reservation
+            ),
+        }
     
     async def process_message(
         self,
@@ -89,22 +126,9 @@ class AnaAgent(Agent):
             conv_context.add_message("assistant", response.text)
             return response
         
-        # Process with LLM
+        # Process message with simple intent detection
         try:
-            # Build messages for LLM
-            messages = self._build_messages(conv_context)
-            
-            # Get response from LLM with tools
-            llm_response = await self.complete(
-                messages=messages,
-                context={
-                    "phone": phone,
-                    "conversation_context": conv_context.model_dump()
-                }
-            )
-            
-            # Parse response
-            response = self._parse_llm_response(llm_response)
+            response = await self._process_with_intent(message, conv_context)
             
             # Update context
             conv_context.add_message("assistant", response.text)
@@ -127,6 +151,115 @@ class AnaAgent(Agent):
                 action="transfer_to_reception"
             )
     
+    async def _process_with_intent(
+        self, 
+        message: str, 
+        context: ConversationContext
+    ) -> AnaResponse:
+        """Process message based on detected intent."""
+        message_lower = message.lower()
+        
+        # Check for greetings
+        if any(word in message_lower for word in ["olá", "oi", "bom dia", "boa tarde", "boa noite"]):
+            return AnaResponse(text=ANA_GREETING)
+        
+        # Check for WiFi info
+        if any(word in message_lower for word in ["wifi", "internet", "senha"]):
+            return AnaResponse(text=WIFI_INFO)
+        
+        # Check for restaurant info
+        if any(word in message_lower for word in ["restaurante", "almoço", "jantar", "café da manhã", "refeição"]):
+            return AnaResponse(text=RESTAURANT_INFO)
+        
+        # Check for amenities info
+        if any(word in message_lower for word in ["lazer", "piscina", "estrutura", "atividades"]):
+            return AnaResponse(text=AMENITIES_INFO)
+        
+        # Check for reservation intent
+        if any(word in message_lower for word in ["reserva", "reservar", "hospedagem", "quarto", "valores", "preço"]):
+            # Check if we have dates in the message
+            if any(char.isdigit() for char in message):
+                # Try to extract dates and calculate
+                return await self._handle_pricing_request(message, context)
+            else:
+                return AnaResponse(text=REQUEST_INFO_TEMPLATE)
+        
+        # Check for pasta rotation
+        if any(word in message_lower for word in ["rodízio", "massa", "pasta"]):
+            return AnaResponse(
+                text="🍝 Nosso Rodízio de Massas acontece toda sexta e sábado, das 19h às 22h!\n\n"
+                     "Adultos: R$ 74,90 | Crianças (5-12): R$ 35,90\n\n"
+                     "Reserva obrigatória em: www.hotelpassarim.com.br/reservas"
+            )
+        
+        # Default: Ask what they need
+        return AnaResponse(
+            text="Como posso ajudar você? Posso fornecer informações sobre:\n"
+                 "• Valores de hospedagem\n"
+                 "• Disponibilidade de quartos\n"
+                 "• Estrutura e lazer\n"
+                 "• Horários do restaurante\n"
+                 "• Rodízio de massas\n"
+                 "• WiFi e outras comodidades"
+        )
+    
+    async def _handle_pricing_request(
+        self, 
+        message: str, 
+        context: ConversationContext
+    ) -> AnaResponse:
+        """Handle pricing calculation request."""
+        # Simple date extraction (this would be more sophisticated in production)
+        import re
+        
+        # Try to find dates in format DD/MM/YYYY or DD-MM-YYYY
+        date_pattern = r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})'
+        dates = re.findall(date_pattern, message)
+        
+        # Try to find number of adults
+        adults_pattern = r'(\d+)\s*(?:adult|pessoa|pax)'
+        adults_match = re.search(adults_pattern, message.lower())
+        adults = int(adults_match.group(1)) if adults_match else 2
+        
+        # Try to find children
+        children_pattern = r'(\d+)\s*(?:criança|filho)'
+        children_match = re.search(children_pattern, message.lower())
+        children_count = int(children_match.group(1)) if children_match else 0
+        
+        if len(dates) >= 2:
+            try:
+                # Parse dates
+                check_in = self._parse_date(dates[0])
+                check_out = self._parse_date(dates[1])
+                
+                # Calculate pricing
+                result = await self.calculate_pricing(
+                    check_in=check_in.strftime("%Y-%m-%d"),
+                    check_out=check_out.strftime("%Y-%m-%d"),
+                    adults=adults,
+                    children=[]  # Simplified for now
+                )
+                
+                return AnaResponse(text=result)
+                
+            except Exception as e:
+                logger.error("Error parsing dates", error=str(e))
+                return AnaResponse(text=REQUEST_INFO_TEMPLATE)
+        else:
+            return AnaResponse(text=REQUEST_INFO_TEMPLATE)
+    
+    def _parse_date(self, date_str: str) -> date:
+        """Parse date from string."""
+        for sep in ['/', '-']:
+            if sep in date_str:
+                parts = date_str.split(sep)
+                if len(parts) == 3:
+                    day, month, year = parts
+                    if len(year) == 2:
+                        year = f"20{year}"
+                    return date(int(year), int(month), int(day))
+        raise ValueError(f"Could not parse date: {date_str}")
+    
     def _get_conversation_context(
         self,
         phone: str,
@@ -146,43 +279,8 @@ class AnaAgent(Agent):
         self.contexts[phone] = conv_context
         return conv_context
     
-    def _build_messages(self, context: ConversationContext) -> List[Dict]:
-        """Build messages array for LLM from conversation history."""
-        messages = []
-        
-        # Add conversation history
-        for msg in context.history:
-            messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-        
-        return messages
-    
-    def _parse_llm_response(self, llm_response: Dict) -> AnaResponse:
-        """Parse LLM response into AnaResponse object."""
-        # Extract content and tool calls
-        content = llm_response.get("content", "")
-        tool_calls = llm_response.get("tool_calls", [])
-        
-        response = AnaResponse(text=content)
-        
-        # Process tool calls
-        for tool_call in tool_calls:
-            tool_name = tool_call.get("name")
-            
-            if tool_name == "transfer_to_reception":
-                response.needs_human = True
-                response.action = "transfer_to_reception"
-            elif tool_name == "generate_omnibees_link":
-                response.action = "generate_link"
-                response.metadata = tool_call.get("arguments", {})
-            
-        return response
-    
     # Tool implementations
     
-    @Tool(description="Calculate accommodation pricing based on dates and guests")
     async def calculate_pricing(
         self,
         check_in: str,
@@ -213,9 +311,9 @@ class AnaAgent(Agent):
             if request.requires_reception():
                 return (
                     "Esta reserva precisa ser finalizada pela recepção devido a:\n"
-                    "- Mais de 4 pessoas no mesmo quarto\n"
-                    "- Crianças acima de 5 anos (precisam cama extra)\n"
-                    "- Pacotes com refeições incluídas\n\n"
+                    "• Mais de 4 pessoas no mesmo quarto\n"
+                    "• Crianças acima de 5 anos (precisam cama extra)\n"
+                    "• Pacotes com refeições incluídas\n\n"
                     "Vou transferir para a recepção finalizar sua reserva!"
                 )
             
@@ -229,7 +327,6 @@ class AnaAgent(Agent):
             logger.error("Error calculating pricing", error=str(e))
             return "Desculpe, não consegui calcular os valores. Por favor, tente novamente."
     
-    @Tool(description="Check room availability for given dates")
     async def check_availability(
         self,
         check_in: str,
@@ -244,7 +341,6 @@ class AnaAgent(Agent):
             "Posso calcular os valores para sua hospedagem?"
         )
     
-    @Tool(description="Generate Omnibees reservation link")
     async def generate_omnibees_link(
         self,
         check_in: str,
@@ -262,12 +358,10 @@ class AnaAgent(Agent):
         
         return OMNIBEES_LINK_MESSAGE.format(link=link)
     
-    @Tool(description="Transfer conversation to human reception staff")
     async def transfer_to_reception(self, reason: str) -> str:
         """Transfer to reception with specific reason."""
         return TRANSFER_TO_RECEPTION.format(reason=reason)
     
-    @Tool(description="Provide hotel information like WiFi, restaurant hours, amenities")
     async def provide_hotel_info(self, info_type: str) -> str:
         """Provide specific hotel information."""
         info_type = info_type.lower()
@@ -292,7 +386,6 @@ class AnaAgent(Agent):
                 f"🌐 Site: {HOTEL_INFO['website']}"
             )
     
-    @Tool(description="Handle pasta rotation reservation")
     async def handle_pasta_reservation(
         self,
         date: str,

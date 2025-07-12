@@ -1,7 +1,6 @@
 # ARIA Hotel AI 🏨🤖
 
-AI-powered multimodal concierge system for hotels, built with [Agno](https://agno.dev) and integrated with
-WhatsApp/Voice via Twilio.
+Sistema de concierge com IA multimodal para hotéis, integrado com WhatsApp via Twilio. Implementação completa da Ana, assistente virtual do Hotel Passarim.
 
 ## 🌟 Features
 
@@ -45,12 +44,24 @@ cp .env.example .env
 ### Running Locally
 
 ```bash
+# Quick start (sem Docker)
+./quick-start.sh
+
+# Com Docker
+./docker-quick-start.sh
+
+# Testar sistema
+./test-local.sh
+
 # Start the API server
 uv run aria serve
 
 # Or with hot reload for development
 uv run uvicorn aria.api.main:app --reload
 ```
+
+### ⚠️ Problemas? 
+Veja [TROUBLESHOOTING.md](TROUBLESHOOTING.md) para soluções comuns.
 
 ### Testing
 

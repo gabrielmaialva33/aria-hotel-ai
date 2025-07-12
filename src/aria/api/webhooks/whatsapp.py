@@ -6,7 +6,7 @@ from typing import Dict
 from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 
-from aria.agents.ana import AnaAgent
+from aria.agents.ana.gemini_agent import AnaGeminiAgent
 from aria.core.logging import get_logger
 from aria.core.sessions import SessionManager
 from aria.integrations.whatsapp import MediaHandler, WhatsAppClient
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/webhooks/whatsapp", tags=["webhooks"])
 whatsapp_client = WhatsAppClient()
 media_handler = MediaHandler()
 session_manager = SessionManager()
-ana_agent = AnaAgent()
+ana_agent = AnaGeminiAgent()
 
 
 @router.post("")

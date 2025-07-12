@@ -2,7 +2,7 @@
 
 from datetime import date
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -103,7 +103,7 @@ class ConversationContext(BaseModel):
     current_request: Optional[ReservationRequest] = None
     state: str = "greeting"  # greeting, collecting_info, presenting_options, etc.
     history: List[Dict[str, str]] = Field(default_factory=list)
-    preferences: Dict[str, any] = Field(default_factory=dict)
+    preferences: Dict[str, Any] = Field(default_factory=dict)
     language: str = "pt_BR"
     
     def add_message(self, role: str, content: str):
@@ -123,4 +123,4 @@ class AnaResponse(BaseModel):
     quick_replies: List[str] = Field(default_factory=list)
     needs_human: bool = False
     action: Optional[str] = None  # generate_link, transfer_reception, etc.
-    metadata: Dict[str, any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
