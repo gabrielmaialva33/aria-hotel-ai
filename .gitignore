@@ -68,6 +68,7 @@ data/
 .env
 .env.local
 .env.*.local
+gcloud-credentials.json
 
 # Docker
 .dockerignore
