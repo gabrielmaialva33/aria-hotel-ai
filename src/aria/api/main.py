@@ -2,7 +2,8 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -50,8 +51,8 @@ app = FastAPI(
     description="AI-powered multimodal concierge system for hotels",
     version="0.1.0",
     lifespan=lifespan,
-    docs_url="/api/docs" if settings.app_debug else None,
-    redoc_url="/api/redoc" if settings.app_debug else None,
+    docs_url="/docs" if settings.app_debug else None,
+    redoc_url="/redoc" if settings.app_debug else None,
 )
 
 # Add middleware
@@ -145,17 +146,20 @@ async def get_stats():
 
 # Error handlers
 @app.exception_handler(404)
-async def not_found_handler(request, exc):
+async def not_found_handler(request: Request, exc):
     """Handle 404 errors."""
-    return {
-        "error": "Not found",
-        "message": "The requested resource was not found",
-        "path": str(request.url.path)
-    }
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "Not found",
+            "message": "The requested resource was not found",
+            "path": str(request.url.path)
+        }
+    )
 
 
 @app.exception_handler(500)
-async def internal_error_handler(request, exc):
+async def internal_error_handler(request: Request, exc):
     """Handle 500 errors."""
     logger.error(
         "Internal server error",
@@ -163,10 +167,13 @@ async def internal_error_handler(request, exc):
         error=str(exc)
     )
     
-    return {
-        "error": "Internal server error",
-        "message": "An unexpected error occurred"
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "message": "An unexpected error occurred"
+        }
+    )
 
 
 if __name__ == "__main__":

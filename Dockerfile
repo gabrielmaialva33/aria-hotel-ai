@@ -8,10 +8,11 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv directly to /usr/local/bin
+# Install uv and move to a known location
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    mv /root/.cargo/bin/uv /usr/local/bin/uv || \
-    (find /root -name "uv" -type f -executable 2>/dev/null | head -1 | xargs -I {} mv {} /usr/local/bin/uv)
+    cp /root/.cargo/bin/uv /usr/local/bin/uv || \
+    cp /root/.local/bin/uv /usr/local/bin/uv || \
+    echo "uv not found in expected locations"
 
 # Set working directory
 WORKDIR /app
