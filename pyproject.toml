@@ -72,7 +72,7 @@ docs = [
 ]
 
 [project.scripts]
-aria = "aria.cli:main"
+aria = "app.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/gabrielmaia/aria-hotel-ai"
@@ -85,7 +85,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/aria"]
+packages = ["app"]
 
 [tool.ruff]
 target-version = "py311"
@@ -112,7 +112,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.isort]
-known-first-party = ["aria"]
+known-first-party = ["app"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -127,14 +127,14 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = [
     "--strict-markers",
-    "--cov=aria",
+    "--cov=app",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
 ]
 
 [tool.coverage.run]
-source = ["src/aria"]
+source = ["app"]
 omit = ["*/tests/*", "*/test_*.py"]
 
 [tool.coverage.report]

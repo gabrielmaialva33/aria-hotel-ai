@@ -1,212 +1,204 @@
 # ARIA Hotel AI 🏨🤖
 
-Sistema de concierge com IA multimodal para hotéis, integrado com WhatsApp via Twilio. Implementação completa da Ana, assistente virtual do Hotel Passarim.
+AI-powered multimodal concierge system for hotels, providing intelligent guest services through WhatsApp, voice calls, and other channels.
 
-## 🌟 Features
+## 🚀 Features
 
-- **Multimodal Processing**: Handle text, voice, images, and video inputs
-- **Multi-Agent Architecture**: Specialized agents for different tasks (concierge, booking, wellness, etc.)
-- **Real-time Communication**: WhatsApp and voice call integration via Twilio
-- **Persistent Memory**: Remember guest preferences across interactions
-- **Proactive Engagement**: Anticipate guest needs based on patterns
-- **Emotion Detection**: Adjust responses based on guest emotional state
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- Redis
-- PostgreSQL (optional, for production)
-- Twilio account
-- OpenAI/Groq API keys
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/gabrielmaia/aria-hotel-ai.git
-cd aria-hotel-ai
-
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Create virtual environment and install dependencies
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install -e .
-
-# Copy environment variables
-cp .env.example .env
-# Edit .env with your credentials
-```
-
-### Running Locally
-
-```bash
-# Initial setup (first time only)
-./scripts/setup.sh
-
-# Start development server
-./scripts/start.sh
-
-# Or start with Docker
-./scripts/docker-start.sh
-
-# Start the API server manually
-uv run aria serve
-
-# Or with hot reload for development
-uv run aria serve --reload
-```
-
-### Testing the System
-
-```bash
-# Test Ana agent
-uv run aria test-ana "Olá, preciso de ajuda com reserva"
-
-# Test WhatsApp integration
-uv run aria test-whatsapp +5511999999999
-
-# Check system info
-uv run aria info
-
-# Show webhook URLs
-uv run aria webhook-url
-```
-
-### ⚠️ Problemas? 
-Veja [TROUBLESHOOTING.md](TROUBLESHOOTING.md) para soluções comuns.
-
-### Testing
-
-```bash
-# Run all tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov
-
-# Run specific test file
-uv run pytest tests/unit/test_agents.py
-```
+- **Multimodal AI Assistant**: Text, voice, and image processing capabilities
+- **WhatsApp Integration**: Full conversational AI through WhatsApp Business
+- **Intelligent Pricing**: Dynamic room rate calculations
+- **Guest Management**: Complete guest profiles and preferences
+- **Reservation System**: Booking management with real-time availability
+- **Multilingual Support**: Portuguese and English (expandable)
+- **Proactive Messaging**: Automated guest communications
+- **Analytics Dashboard**: Real-time insights and metrics
 
 ## 📁 Project Structure
 
 ```
 aria-hotel-ai/
-├── src/aria/           # Main application code
-│   ├── agents/         # AI agents (orchestrator, concierge, etc.)
-│   ├── tools/          # Agent tools (hotel, vision, emotion)
-│   ├── integrations/   # External integrations (Twilio, PMS)
-│   ├── core/           # Core functionality (config, models)
-│   └── api/            # FastAPI application
-├── tests/              # Test suite
-├── docs/               # Documentation
-├── scripts/            # Utility scripts
-└── config/             # Configuration files
+├── app/                    # Application code
+│   ├── api/               # FastAPI endpoints and webhooks
+│   │   ├── webhooks/      # WhatsApp, voice, etc.
+│   │   └── main.py        # Main FastAPI app
+│   ├── agents/            # AI agents
+│   │   └── ana/           # Ana assistant agent
+│   ├── core/              # Core functionality
+│   │   ├── config.py      # Configuration management
+│   │   ├── logging.py     # Structured logging
+│   │   └── sessions.py    # Session management
+│   ├── integrations/      # External integrations
+│   │   ├── whatsapp/      # WhatsApp/Twilio
+│   │   └── omnibees/      # PMS integration
+│   ├── models/            # Data models (Pydantic)
+│   │   ├── guest.py       # Guest models
+│   │   ├── reservation.py # Reservation models
+│   │   └── conversation.py # Chat models
+│   └── services/          # Business logic
+│       ├── messaging/     # Message templates
+│       ├── analytics/     # Analytics service
+│       ├── payments/      # Payment processing
+│       └── vision/        # Image analysis
+├── tests/                 # Test suite
+├── scripts/               # Utility scripts
+├── docs/                  # Documentation
+├── config/                # Configuration files
+└── main.py               # Entry point
 ```
+
+## 🛠️ Tech Stack
+
+- **Framework**: FastAPI
+- **AI/ML**: OpenAI, Google Gemini, Groq
+- **Database**: PostgreSQL + Redis
+- **Messaging**: Twilio (WhatsApp/Voice)
+- **Container**: Docker + Docker Compose
+- **Monitoring**: Prometheus + Grafana
+
+## 📋 Prerequisites
+
+- Python 3.11+
+- Docker & Docker Compose
+- Redis
+- PostgreSQL (optional, can use SQLite for development)
+- Twilio Account (for WhatsApp/Voice)
+- AI API Keys (OpenAI/Gemini/Groq)
+
+## 🚀 Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/gabrielmaia/aria-hotel-ai.git
+   cd aria-hotel-ai
+   ```
+
+2. **Set up environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and configuration
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -e .
+   # or for development
+   pip install -e ".[dev]"
+   ```
+
+4. **Run with Docker**
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **Or run locally**
+   ```bash
+   # Start Redis first
+   redis-server
+   
+   # Run the application
+   python main.py
+   # or use the CLI
+   aria serve
+   ```
 
 ## 🔧 Configuration
 
-### Environment Variables
+Key environment variables:
 
-See `.env.example` for all available configuration options. Key variables:
+```env
+# AI Services
+OPENAI_API_KEY=your-key
+GEMINI_API_KEY=your-key
+GROQ_API_KEY=your-key
 
-- `OPENAI_API_KEY`: OpenAI API key for GPT models
-- `GROQ_API_KEY`: Groq API key (free tier available)
-- `TWILIO_*`: Twilio credentials for WhatsApp/Voice
-- `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string
+# Twilio
+TWILIO_ACCOUNT_SID=your-sid
+TWILIO_AUTH_TOKEN=your-token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 
-### WhatsApp Setup
+# Database
+DATABASE_URL=postgresql://user:pass@localhost/aria
+REDIS_URL=redis://localhost:6379/0
 
-1. Configure Twilio WhatsApp sandbox or production number
-2. Set webhook URL to `https://your-domain.com/webhooks/whatsapp`
-3. Test with sandbox by sending "join [keyword]" to the Twilio number
-
-## 🧪 Development
-
-### Code Style
-
-We use `ruff` for linting and `black` for formatting:
-
-```bash
-# Format code
-uv run ruff format .
-
-# Lint code
-uv run ruff check . --fix
-
-# Type checking
-uv run mypy src/aria
+# Application
+APP_ENV=development
+LOG_LEVEL=INFO
 ```
 
-### Pre-commit Hooks
+## 📱 WhatsApp Setup
 
+1. Configure webhook URL in Twilio Console:
+   ```
+   https://your-domain.com/webhooks/whatsapp
+   ```
+
+2. Test the integration:
+   ```bash
+   aria test-whatsapp +5511999999999
+   ```
+
+## 🧪 Testing
+
+Run tests:
 ```bash
-# Install pre-commit hooks
-uv run pre-commit install
-
-# Run manually
-uv run pre-commit run --all-files
+pytest
+# With coverage
+pytest --cov=app
 ```
 
-## 📚 Documentation
+## 📚 API Documentation
 
-Full documentation is available at [https://aria-hotel-ai.readthedocs.io](https://aria-hotel-ai.readthedocs.io)
+Once running, access:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
-### Building Docs Locally
-
-```bash
-uv run mkdocs serve
-# Visit http://localhost:8000
-```
-
-## 🚀 Deployment
-
-### Docker
+## 🛠️ CLI Commands
 
 ```bash
-# Build image
-docker build -t aria-hotel-ai .
+# Start server
+aria serve
 
-# Run container
-docker run -p 8000:8000 --env-file .env aria-hotel-ai
+# Show configuration
+aria info
+
+# Test WhatsApp
+aria test-whatsapp +5511999999999
+
+# Test Ana agent
+aria test-ana "Olá, quais quartos disponíveis?"
+
+# Calculate pricing
+aria calculate-price 2024-07-20 2024-07-25 2 --children 5,8
 ```
 
-### Docker Compose
+## 📊 Architecture
 
-```bash
-# Start all services
-docker-compose up -d
+The system follows a clean architecture pattern:
 
-# View logs
-docker-compose logs -f aria
-```
+- **API Layer**: FastAPI handles HTTP requests and webhooks
+- **Service Layer**: Business logic and orchestration
+- **Agent Layer**: AI agents for different capabilities
+- **Integration Layer**: External service connections
+- **Model Layer**: Data models and validation
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 👥 Team
+
+- Gabriel Maia - Lead Developer - [gabrielmaialva33@gmail.com](mailto:gabrielmaialva33@gmail.com)
 
 ## 🙏 Acknowledgments
 
-- [Agno](https://agno.dev) - Multi-agent framework
-- [Twilio](https://twilio.com) - Communication APIs
-- [OpenAI](https://openai.com) - AI models
-- [Groq](https://groq.com) - Fast inference
-
-## 📞 Support
-
-- Documentation: [https://aria-hotel-ai.readthedocs.io](https://aria-hotel-ai.readthedocs.io)
-- Issues: [GitHub Issues](https://github.com/gabrielmaia/aria-hotel-ai/issues)
-- Email: support@aria-hotel-ai.com
+- Hotel Passarim team for domain expertise
+- Anthropic, OpenAI, and Google for AI capabilities
+- Twilio for communication infrastructure
