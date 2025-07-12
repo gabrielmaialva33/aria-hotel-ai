@@ -6,7 +6,7 @@ from typing import Dict
 from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 
-from app.agents.ana.gemini_agent import AnaGeminiAgent
+from app.agents.ana.agent import AnaAgent  # Use the new Agno-powered agent
 from app.core.logging import get_logger
 from app.core.sessions import SessionManager
 from app.integrations.whatsapp import MediaHandler, WhatsAppClient
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/webhooks/whatsapp", tags=["webhooks"])
 whatsapp_client = WhatsAppClient()
 media_handler = MediaHandler()
 session_manager = SessionManager()
-ana_agent = AnaGeminiAgent()
+ana_agent = AnaAgent()  # Now using Agno Framework
 
 
 @router.post("")

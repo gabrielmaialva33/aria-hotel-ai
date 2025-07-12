@@ -37,21 +37,12 @@ class SessionManager:
             # Parse Redis URL to check for password
             redis_url = str(settings.redis_url)
 
-            # If Redis URL has password, use it
-            if "@" in redis_url and ":" in redis_url.split("@")[0].split("//")[-1]:
-                self.redis = redis.from_url(
-                    redis_url,
-                    decode_responses=True,
-                    health_check_interval=30
-                )
-            else:
-                # Try without password first
-                self.redis = redis.from_url(
-                    redis_url,
-                    decode_responses=True,
-                    health_check_interval=30,
-                    password=None
-                )
+            # Create Redis client
+            self.redis = redis.from_url(
+                redis_url,
+                decode_responses=True,
+                health_check_interval=30
+            )
 
             # Test connection
             await self.redis.ping()
@@ -64,14 +55,14 @@ class SessionManager:
             self._connected = False
             self.redis = None
         except Exception as e:
-            logger.warning(f"Redis not available ({str(e)}), running in memory-only mode")
+            logger.warning(f"Redis not available ({e}), running in memory-only mode")
             self._connected = False
             self.redis = None
 
     async def disconnect(self):
         """Disconnect from Redis."""
         if self.redis and self._connected:
-            await self.redis.close()
+            await self.redis.aclose()
             self._connected = False
             logger.info("Disconnected from Redis")
 

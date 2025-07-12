@@ -109,7 +109,7 @@ async def health_check():
     # Check Redis connection
     redis_healthy = False
     try:
-        if session_manager._connected and session_manager.redis:
+        if session_manager._connected and session_manager.redis is not None:
             await session_manager.redis.ping()
             redis_healthy = True
     except Exception as e:
