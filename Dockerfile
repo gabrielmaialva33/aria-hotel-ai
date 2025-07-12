@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -23,6 +23,9 @@ COPY README.md .
 
 # Create virtual environment and install dependencies
 RUN uv venv .venv
+# First install google-genai explicitly
+RUN uv pip install google-genai==1.25.0
+# Then install the rest
 RUN uv pip install -e . --no-cache-dir
 
 # Runtime stage
@@ -34,6 +37,7 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr-por \
     libgl1-mesa-glx \
     libglib2.0-0 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -47,7 +51,8 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
 
 # Copy application code
-COPY src/ ./src/
+COPY app/ ./app/
+COPY main.py .
 COPY .env.example .
 
 # Set ownership
@@ -58,7 +63,7 @@ USER aria
 
 # Set Python path
 ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH=/app/src:$PYTHONPATH
+ENV PYTHONPATH=/app:$PYTHONPATH
 
 # Expose port
 EXPOSE 8000
@@ -68,4 +73,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Default command
-CMD ["python", "-m", "aria.api.main"]
+CMD ["python", "main.py"]
