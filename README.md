@@ -44,20 +44,36 @@ cp .env.example .env
 ### Running Locally
 
 ```bash
-# Quick start (sem Docker)
-./quick-start.sh
+# Initial setup (first time only)
+./scripts/setup.sh
 
-# Com Docker
-./docker-quick-start.sh
+# Start development server
+./scripts/start.sh
 
-# Testar sistema
-./test-local.sh
+# Or start with Docker
+./scripts/docker-start.sh
 
-# Start the API server
+# Start the API server manually
 uv run aria serve
 
 # Or with hot reload for development
-uv run uvicorn aria.api.main:app --reload
+uv run aria serve --reload
+```
+
+### Testing the System
+
+```bash
+# Test Ana agent
+uv run aria test-ana "Olá, preciso de ajuda com reserva"
+
+# Test WhatsApp integration
+uv run aria test-whatsapp +5511999999999
+
+# Check system info
+uv run aria info
+
+# Show webhook URLs
+uv run aria webhook-url
 ```
 
 ### ⚠️ Problemas? 
