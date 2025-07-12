@@ -16,7 +16,6 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -30,10 +29,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
-# UV
-.uv/
-uv.lock
+.python-version
 
 # IDE
 .vscode/
@@ -41,75 +37,77 @@ uv.lock
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+.settings/
 .DS_Store
 
 # Testing
 .coverage
 .pytest_cache/
-htmlcov/
 .tox/
-.nox/
+htmlcov/
+.coverage.*
 coverage.xml
 *.cover
-*.log
-
-# Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb
-
-# Environment variables
-.env
-.env.local
-.env.development
-.env.test
-.env.production
+.hypothesis/
+.nox/
 
 # Logs
 logs/
 *.log
+*.log.*
 
-# Database
+# Local data
+data/
 *.db
 *.sqlite
 *.sqlite3
 
-# Redis
-dump.rdb
+# Environment variables
+.env
+.env.local
+.env.*.local
 
-# ML Models
-models/
-*.pkl
-*.h5
-*.model
+# Docker
+.dockerignore
 
-# Media files
-media/
-uploads/
+# Temporary files
+*.tmp
+*.temp
+tmp/
 temp/
 
-# Secrets
-secrets/
-*.pem
-*.key
-*.crt
-
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Backups
-*.bak
-*.backup
-
-# Temporary files
-tmp/
-temp/
-cache/
-
-# Documentation
-docs/_build/
-site/
+# Project specific
+uploads/
+media/
+static/collected/
+.redis-data/
+.postgres-data/
 
 # Monitoring
 prometheus_data/
 grafana_data/
+
+# Certificates
+*.pem
+*.key
+*.crt
+*.csr
+
+# Backups
+*.backup
+*.bak
+
+# uv
+.uv/
+uv.lock
+
+# Lock files (keep only necessary ones)
+# Keep package-lock.json if using npm
+# Keep yarn.lock if using yarn
+# Keep Pipfile.lock if using pipenv
