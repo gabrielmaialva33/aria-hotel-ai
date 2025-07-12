@@ -1,0 +1,61 @@
+# Simplified Docker Compose for quick start
+services:
+  # ARIA API Service
+  aria-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aria-api
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=postgresql://aria:aria_password@postgres:5432/aria_db
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - aria-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: aria-postgres
+    environment:
+      - POSTGRES_DB=aria_db
+      - POSTGRES_USER=aria
+      - POSTGRES_PASSWORD=aria_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - aria-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: aria-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - aria-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  aria-network:
+    driver: bridge
