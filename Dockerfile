@@ -5,7 +5,7 @@ FROM python:3.12-slim AS builder
 RUN apt-get update && apt-get install -y gcc g++ curl && rm -rf /var/lib/apt/lists/*
 
 # Install uv and move to a known location
-RUN (curl -LsSf https://astral.sh/uv/install.sh | sh) && (cp /root/.cargo/bin/uv /usr/local/bin/uv || cp /root/.local/bin/uv /usr/local/bin/uv || echo "uv not found in expected locations")
+RUN sh -c 'curl -LsSf https://astral.sh/uv/install.sh | sh && (cp /root/.cargo/bin/uv /usr/local/bin/uv || cp /root/.local/bin/uv /usr/local/bin/uv || echo "uv not found in expected locations")'
 
 # Set working directory
 WORKDIR /app
