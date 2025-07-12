@@ -48,12 +48,26 @@ class AnaAgent:
         self.calculator = PricingCalculator()
         self.contexts: Dict[str, ConversationContext] = {}
         
+        # Get API key (try both GEMINI_API_KEY and GOOGLE_API_KEY)
+        api_key = settings.gemini_api_key or settings.google_api_key
+        if not api_key:
+            logger.error("No Google/Gemini API key found in settings")
+            raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY must be set")
+        
+        logger.info(
+            "Initializing Ana Agent with Agno Framework",
+            model="gemini-2.0-flash",
+            has_api_key=bool(api_key),
+            using_vertexai=False
+        )
+        
         # Initialize Agno agent with Gemini
         self.agent = Agent(
             model=Gemini(
                 id="gemini-2.0-flash",
-                api_key=settings.gemini_api_key,
-                temperature=0.7,  # Move temperature to model config
+                api_key=api_key,
+                temperature=0.7,
+                vertexai=False,  # Force Google AI Studio instead of Vertex AI
             ),
             instructions=ANA_SYSTEM_PROMPT,
             tools=[
