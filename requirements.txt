@@ -1,5 +1,5 @@
 # Core dependencies
-agno>=0.1.0
+agno>=0.1.42
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
 twilio>=9.0.0
