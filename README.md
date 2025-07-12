@@ -35,9 +35,9 @@
 
 ## :bookmark: About
 
-**ARIA Hotel AI** is a comprehensive AI-powered multimodal concierge system for hotels, built with the **Agno Framework
-** and advanced AI models. The system provides automated customer service via WhatsApp, digital check-in, service
-management, and much more, revolutionizing the hospitality experience.
+**ARIA Hotel AI** is a comprehensive AI-powered multimodal concierge system for hotels, built with the **Agno Framework** and advanced AI models. The system provides automated customer service via WhatsApp, digital check-in, service management, and much more, revolutionizing the hospitality experience.
+
+> **🚧 Development Status**: This project is currently in **MVP (Minimum Viable Product)** phase. Core features are implemented and functional, while advanced features are under active development. See [Implementation Status](docs/implementation-status.md) for detailed progress.
 
 ### 🏗️ Architecture Overview
 
@@ -212,29 +212,39 @@ graph TD
 
 ## 🌟 Key Features
 
-### Core Features
+### ✅ Implemented Features (MVP)
 
 - **🤖 Ana AI Agent**: Intelligent assistant powered by Agno Framework and Google Gemini 2.0
 - **📱 WhatsApp Integration**: 24/7 automated customer service via Twilio
-- **🏨 Hotel Management**: Complete booking, check-in/out, and service management
+- **💰 Pricing Calculator**: Dynamic pricing with holiday detection and meal plans
+- **🔗 Booking Links**: Omnibees integration for reservation generation
+- **📋 Hotel Information**: Comprehensive hotel details and amenities
+- **⚡ Real-time Processing**: Fast response times with Redis session management
+- **🔒 Security First**: Secure webhook handling and data protection
+- **📊 Basic Analytics**: Application statistics and health monitoring
+
+### 🚧 In Development
+
+- **🏨 Complete Hotel Management**: Full booking, check-in/out, and service management
 - **💳 Payment Processing**: Integrated PIX and credit card payments with discounts
-- **📊 Analytics Dashboard**: Real-time insights and performance metrics
+- **📊 Advanced Analytics Dashboard**: Real-time insights and performance metrics
 - **🔍 Vision Analysis**: OCR and image processing for documents and requests
 - **🌐 Multi-language Support**: Portuguese and English with NLP processing
-- **⚡ Real-time Processing**: Fast response times with Redis caching
 - **📈 Proactive Messaging**: Automated marketing and service notifications
-- **🔒 Security First**: Secure webhook handling and data protection
 
 ### Advanced AI Features
 
+#### ✅ Currently Available
 - **🎯 Context-Aware Responses**: Maintains conversation context across sessions
 - **🧮 Smart Pricing Calculator**: Dynamic pricing based on dates, occupancy, and preferences
+- **🔍 Intelligent Search**: Natural language queries for hotel information
+
+#### 🚧 Planned Features
 - **📋 Service Orchestration**: Coordinates multiple hotel services seamlessly
 - **🔄 Multi-modal Processing**: Handles text, images, and voice inputs
 - **📱 Rich Media Support**: Sends images, documents, and interactive messages
 - **🎨 Personalized Marketing**: Tailored offers based on guest preferences
 - **📊 Sentiment Analysis**: Monitors guest satisfaction in real-time
-- **🔍 Intelligent Search**: Natural language queries for hotel information
 
 ### Hotel Operations
 
@@ -319,9 +329,10 @@ The following software must be installed:
 
 ### API Keys Required:
 
-- **Google Gemini API Key**
-- **Twilio Account SID and Auth Token**
+- **Google Gemini API Key** (required for AI functionality)
+- **Twilio Account SID and Auth Token** (required for WhatsApp integration)
 - **WhatsApp Business Number** (via Twilio)
+- **Optional**: OpenAI API Key, Groq API Key, Anthropic API Key (for additional AI models)
 
 <br>
 
@@ -339,10 +350,10 @@ cd aria-hotel-ai
 #### Option 1: Docker (Recommended)
 
 ```sh
-# Copy environment file
-cp .env.example .env
+# Create environment file from template
+cp .env .env.local  # or create your own .env file
 
-# Edit with your API keys
+# Edit with your API keys (required: GEMINI_API_KEY, TWILIO credentials)
 nano .env
 
 # Start all services
@@ -350,6 +361,8 @@ docker-compose up --build
 
 # The API will be available at http://localhost:8000
 ```
+
+> **Note**: Make sure to configure at least `GEMINI_API_KEY` and Twilio credentials for basic functionality.
 
 #### Option 2: Local Development
 
@@ -360,26 +373,25 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-# or
+# or install in development mode
 pip install -e .
 
-# Copy and configure environment
-cp .env.example .env
+# Create and configure environment file
+cp .env .env.local  # or create your own .env file
 nano .env
 
 # Start Redis and PostgreSQL (via Docker)
 docker-compose up -d postgres redis
 
-# Run database migrations (if applicable)
-python -m app.cli db init
-
 # Start the application
 python main.py
-# or
+# or using the CLI
 aria serve
 
 # The API will be available at http://localhost:8000
 ```
+
+> **Note**: Database migrations are not yet implemented. The application currently uses Redis for session management and basic functionality.
 
 #### Option 3: Using the CLI
 
@@ -590,24 +602,52 @@ self.agent = Agent(
 ### 🔑 Environment Variables
 
 ```env
-# AI Services
-GEMINI_API_KEY=your-gemini-key
-OPENAI_API_KEY=your-openai-key  # optional
-GROQ_API_KEY=your-groq-key      # optional
+# Application
+APP_NAME="ARIA Hotel AI"
+APP_ENV=development
+APP_DEBUG=true
+LOG_LEVEL=INFO
 
-# Twilio
-TWILIO_ACCOUNT_SID=your-sid
-TWILIO_AUTH_TOKEN=your-token
+# AI Services (Required)
+GEMINI_API_KEY=your-gemini-api-key
+GOOGLE_GENAI_USE_VERTEXAI=True
+GOOGLE_CLOUD_PROJECT=your-project-id
+GOOGLE_CLOUD_LOCATION=global
+
+# AI Services (Optional)
+OPENAI_API_KEY=your-openai-key
+GROQ_API_KEY=your-groq-key
+ANTHROPIC_API_KEY=your-anthropic-key
+
+# Twilio Configuration (Required for WhatsApp)
+TWILIO_ACCOUNT_SID=your-account-sid
+TWILIO_AUTH_TOKEN=your-auth-token
 TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+TWILIO_VOICE_NUMBER=+1234567890
+TWILIO_API_KEY=your-api-key
+TWILIO_API_SECRET=your-api-secret
 
 # Database
-DATABASE_URL=postgresql://user:pass@localhost/aria
+DATABASE_URL=postgresql://aria:password@localhost:5432/aria_db
 REDIS_URL=redis://localhost:6379/0
 
-# Application
-APP_ENV=development
-LOG_LEVEL=INFO
+# Server Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
 WEBHOOK_BASE_URL=https://your-domain.com
+
+# Security
+JWT_SECRET_KEY=your-super-secret-jwt-key-change-this
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+
+# Hotel Integration (Optional)
+PMS_API_URL=https://api.your-pms.com
+PMS_API_KEY=your-pms-api-key
+
+# Feature Flags
+ENABLE_VOICE_CALLS=true
+ENABLE_VISION_ANALYSIS=true
+ENABLE_PROACTIVE_MESSAGING=true
 ```
 
 ### 🚢 Deployment

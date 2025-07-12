@@ -35,9 +35,9 @@
 
 ## :bookmark: Sobre
 
-**ARIA Hotel AI** é um sistema completo de concierge multimodal alimentado por IA para hotéis, construído com o **Agno
-Framework** e modelos de IA avançados. O sistema oferece atendimento automatizado via WhatsApp, check-in digital, gestão
-de serviços e muito mais, revolucionando a experiência de hospitalidade.
+**ARIA Hotel AI** é um sistema completo de concierge multimodal alimentado por IA para hotéis, construído com o **Agno Framework** e modelos de IA avançados. O sistema oferece atendimento automatizado via WhatsApp, check-in digital, gestão de serviços e muito mais, revolucionando a experiência de hospitalidade.
+
+> **🚧 Status de Desenvolvimento**: Este projeto está atualmente na fase **MVP (Produto Mínimo Viável)**. As funcionalidades principais estão implementadas e funcionais, enquanto recursos avançados estão em desenvolvimento ativo. Veja [Status da Implementação](docs/implementation-status.md) para progresso detalhado.
 
 ### 🏗️ Visão Geral da Arquitetura
 
@@ -212,29 +212,39 @@ graph TD
 
 ## 🌟 Principais Funcionalidades
 
-### Funcionalidades Core
+### ✅ Funcionalidades Implementadas (MVP)
 
 - **🤖 Agente Ana IA**: Assistente inteligente alimentado pelo Agno Framework e Google Gemini 2.0
 - **📱 Integração WhatsApp**: Atendimento automatizado 24/7 via Twilio
-- **🏨 Gestão Hoteleira**: Reservas completas, check-in/out e gestão de serviços
+- **💰 Calculadora de Preços**: Preços dinâmicos com detecção de feriados e planos de refeição
+- **🔗 Links de Reserva**: Integração Omnibees para geração de reservas
+- **📋 Informações do Hotel**: Detalhes abrangentes do hotel e comodidades
+- **⚡ Processamento Tempo Real**: Tempos de resposta rápidos com gerenciamento de sessão Redis
+- **🔒 Segurança Primeiro**: Manipulação segura de webhooks e proteção de dados
+- **📊 Analytics Básico**: Estatísticas da aplicação e monitoramento de saúde
+
+### 🚧 Em Desenvolvimento
+
+- **🏨 Gestão Hoteleira Completa**: Reservas completas, check-in/out e gestão de serviços
 - **💳 Processamento Pagamentos**: PIX integrado e pagamentos com cartão com descontos
-- **📊 Dashboard Analytics**: Insights e métricas de performance em tempo real
+- **📊 Dashboard Analytics Avançado**: Insights e métricas de performance em tempo real
 - **🔍 Análise Visão**: OCR e processamento de imagens para documentos e solicitações
 - **🌐 Suporte Multi-idioma**: Português e Inglês com processamento NLP
-- **⚡ Processamento Tempo Real**: Tempos de resposta rápidos com cache Redis
 - **📈 Mensagens Proativas**: Marketing automatizado e notificações de serviços
-- **🔒 Segurança Primeiro**: Manipulação segura de webhooks e proteção de dados
 
 ### Funcionalidades Avançadas IA
 
+#### ✅ Atualmente Disponível
 - **🎯 Respostas Contextuais**: Mantém contexto da conversa entre sessões
 - **🧮 Calculadora Preços Inteligente**: Preços dinâmicos baseados em datas, ocupação e preferências
+- **🔍 Busca Inteligente**: Consultas em linguagem natural para informações do hotel
+
+#### 🚧 Funcionalidades Planejadas
 - **📋 Orquestração Serviços**: Coordena múltiplos serviços do hotel perfeitamente
 - **🔄 Processamento Multi-modal**: Manipula entradas de texto, imagens e voz
 - **📱 Suporte Mídia Rica**: Envia imagens, documentos e mensagens interativas
 - **🎨 Marketing Personalizado**: Ofertas sob medida baseadas em preferências do hóspede
 - **📊 Análise Sentimento**: Monitora satisfação do hóspede em tempo real
-- **🔍 Busca Inteligente**: Consultas em linguagem natural para informações do hotel
 
 ### Operações Hoteleiras
 
