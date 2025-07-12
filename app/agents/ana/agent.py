@@ -52,9 +52,10 @@ class AnaAgent:
         self.agent = Agent(
             model=Gemini(
                 id="gemini-2.0-flash",
-                api_key=settings.gemini_api_key
+                api_key=settings.gemini_api_key,
+                temperature=0.7,  # Move temperature to model config
             ),
-            system_prompt=ANA_SYSTEM_PROMPT,
+            instructions=ANA_SYSTEM_PROMPT,
             tools=[
                 self.calculate_pricing,
                 self.check_availability,
@@ -72,7 +73,6 @@ class AnaAgent:
                 self.check_payment_status,
             ],
             markdown=True,
-            temperature=0.7,
         )
     
     async def process_message(
