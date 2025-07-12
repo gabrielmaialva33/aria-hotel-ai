@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src=".github/assets/images/hotel.png" height="200" alt="ARIA Hotel AI">
+  <img src="https://raw.githubusercontent.com/gabrielmaialva33/aria-hotel-ai/refs/heads/main/.github/assets/hotel.png" height="200" alt="ARIA Hotel AI">
 </h1>
 
 <p align="center">
