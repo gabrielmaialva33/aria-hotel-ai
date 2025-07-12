@@ -55,7 +55,11 @@ class SessionManager:
             self._connected = False
             self.redis = None
         except Exception as e:
-            logger.warning(f"Redis not available ({e}), running in memory-only mode")
+            import traceback
+            logger.warning(
+                f"Redis not available ({e}), running in memory-only mode",
+                exc_info=True
+            )
             self._connected = False
             self.redis = None
 
