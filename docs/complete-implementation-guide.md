@@ -591,7 +591,7 @@ curl -X POST https://api.mercadopago.com/v1/webhooks/test \
 ## 📞 Suporte e Contato
 
 - **Documentação**: https://aria-hotel-ai.readthedocs.io
-- **Issues**: https://github.com/gabrielmaia/aria-hotel-ai/issues
+- **Issues**: https://github.com/gabrielmaialv33/aria-hotel-ai/issues
 - **Email**: support@aria-hotel-ai.com
 - **Discord**: https://discord.gg/aria-hotel-ai
 

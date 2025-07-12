@@ -13,7 +13,7 @@
 
 1. **Clone o repositório**
 ```bash
-git clone https://github.com/gabrielmaia/aria-hotel-ai.git
+git clone https://github.com/gabrielmaialv33/aria-hotel-ai.git
 cd aria-hotel-ai
 ```
 
@@ -194,5 +194,5 @@ docker run -d -p 6379:6379 redis:alpine
 ## 🆘 Suporte
 
 - Documentação: [/docs](/docs)
-- Issues: [GitHub Issues](https://github.com/gabrielmaia/aria-hotel-ai/issues)
+- Issues: [GitHub Issues](https://github.com/gabrielmaialv33/aria-hotel-ai/issues)
 - Email: suporte@aria-hotel-ai.com
