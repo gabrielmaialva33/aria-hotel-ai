@@ -3,13 +3,13 @@
 </h1>
 
 <p align="center">
-  <img src="https://img.shields.io/github/license/gabrielmaialv33/aria-hotel-ai?color=00b8d3?style=flat&logo=appveyor" alt="License" />
-  <img src="https://img.shields.io/github/languages/top/gabrielmaialv33/aria-hotel-ai?style=flat&logo=appveyor" alt="GitHub top language" >
-  <img src="https://img.shields.io/github/languages/count/gabrielmaialv33/aria-hotel-ai?style=flat&logo=appveyor" alt="GitHub language count" >
-  <img src="https://img.shields.io/github/repo-size/gabrielmaialv33/aria-hotel-ai?style=flat&logo=appveyor" alt="Repository size" >
+  <img src="https://img.shields.io/github/license/gabrielmaialva33/aria-hotel-ai?color=00b8d3?style=flat&logo=appveyor" alt="License" />
+  <img src="https://img.shields.io/github/languages/top/gabrielmaialva33/aria-hotel-ai?style=flat&logo=appveyor" alt="GitHub top language" >
+  <img src="https://img.shields.io/github/languages/count/gabrielmaialva33/aria-hotel-ai?style=flat&logo=appveyor" alt="GitHub language count" >
+  <img src="https://img.shields.io/github/repo-size/gabrielmaialva33/aria-hotel-ai?style=flat&logo=appveyor" alt="Repository size" >
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg?style=flat&logo=appveyor" alt="Python 3.11+" >
-  <a href="https://github.com/gabrielmaialv33/aria-hotel-ai/commits/main">
-    <img src="https://img.shields.io/github/last-commit/gabrielmaialv33/aria-hotel-ai?style=flat&logo=appveyor" alt="GitHub last commit" >
+  <a href="https://github.com/gabrielmaialva33/aria-hotel-ai/commits/main">
+    <img src="https://img.shields.io/github/last-commit/gabrielmaialva33/aria-hotel-ai?style=flat&logo=appveyor" alt="GitHub last commit" >
     <img src="https://img.shields.io/badge/feito%20por-Gabriel%20Maia-15c3d6?style=flat&logo=appveyor" alt="Gabriel Maia" >  
   </a>
 </p>
@@ -132,7 +132,7 @@ sequenceDiagram
     Twilio->>API: Notificação webhook
     API->>Ana: Processar mensagem
     Ana->>AI: Gerar resposta com ferramentas
-    
+
     alt Solicitação Reserva
         AI->>Services: Verificar disponibilidade
         Services->>DB: Consultar quartos
@@ -158,30 +158,30 @@ sequenceDiagram
 graph TD
     subgraph "Estrutura Aplicação"
         APP[app/]
-        
+
         subgraph "Agentes IA"
             AGENTS[agents/]
             ANA_AGENT[ana/]
         end
-        
+
         subgraph "Camada API"
             API_LAYER[api/]
             WEBHOOKS[webhooks/]
         end
-        
+
         subgraph "Sistemas Core"
             CORE[core/]
             CONFIG[config.py]
             SESSIONS[sessions.py]
             LOGGING[logging.py]
         end
-        
+
         subgraph "Integrações"
             INTEGRATIONS[integrations/]
             WHATSAPP[whatsapp/]
             OMNIBEES_INT[omnibees/]
         end
-        
+
         subgraph "Serviços"
             SERVICES[services/]
             ANALYTICS_SVC[analytics/]
@@ -195,7 +195,7 @@ graph TD
     APP --> CORE
     APP --> INTEGRATIONS
     APP --> SERVICES
-    
+
     AGENTS --> ANA_AGENT
     API_LAYER --> WEBHOOKS
     CORE --> CONFIG
@@ -325,7 +325,7 @@ Os seguintes softwares devem estar instalados:
 ### :arrow_down: **Clonando o repositório**
 
 ```sh
-git clone https://github.com/gabrielmaialv33/aria-hotel-ai.git
+git clone https://github.com/gabrielmaialva33/aria-hotel-ai.git
 cd aria-hotel-ai
 ```
 
@@ -467,7 +467,7 @@ sequenceDiagram
 
     Cliente->>FastAPI: Requisição HTTP
     FastAPI->>Middleware: Match de Rota
-    
+
     alt Requisição Webhook
         Middleware->>Middleware: Verificar Assinatura Twilio
     else Requisição API
@@ -669,5 +669,5 @@ Gostou? Deixe uma estrela para ajudar o projeto ⭐
 </p>
 
 <p align="center">
-  &copy; 2024-present <a href="https://github.com/gabrielmaialv33/" target="_blank">Gabriel Maia</a>
+  &copy; 2024-present <a href="https://github.com/gabrielmaialva33/" target="_blank">Gabriel Maia</a>
 </p>
