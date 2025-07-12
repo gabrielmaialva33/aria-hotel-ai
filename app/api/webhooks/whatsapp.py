@@ -56,12 +56,25 @@ async def handle_whatsapp_webhook(request: Request):
             context=session
         )
 
-        # Send response
-        await whatsapp_client.send_message(
-            to=phone,
-            body=response.text,
-            media_urls=response.media_urls if response.media_urls else None
-        )
+        # Send response (only if there's content)
+        if response.text and response.text.strip():
+            await whatsapp_client.send_message(
+                to=phone,
+                body=response.text,
+                media_urls=response.media_urls if response.media_urls else None
+            )
+        else:
+            # If no response text, send a default acknowledgment
+            logger.warning(
+                "Empty response from Ana agent",
+                phone=phone,
+                message=message_data.get("body", "")
+            )
+            await whatsapp_client.send_message(
+                to=phone,
+                body="Entendi! 👍 Posso ajudar com mais alguma coisa?",
+                media_urls=None
+            )
 
         # Handle special actions
         if response.action == "transfer_to_reception":
