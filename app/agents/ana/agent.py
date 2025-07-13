@@ -38,6 +38,8 @@ from app.agents.ana.prompts import (
 from app.core.logging import get_logger
 from app.core.config import settings
 from app.core.utils import parse_meal_plan
+from app.core.reservations import get_reservation_manager
+from app.core.reservations import get_reservation_manager
 
 logger = get_logger(__name__)
 
@@ -96,6 +98,9 @@ class AnaAgent:
                 self.check_payment_status,
                 self.get_proactive_suggestions,
                 self.create_reservation,
+                self.get_reservation_details,
+                self.generate_payment_pix,
+                self.confirm_guest_data,
             ],
             # Chat history configuration
             add_history_to_messages=True,
@@ -800,31 +805,311 @@ class AnaAgent:
         guest_phone: str = None,
     ) -> str:
         """
-        Create a reservation in the database.
+        Cria uma reserva real no sistema e retorna o código de confirmação.
 
         Args:
-            check_in: Check-in date (YYYY-MM-DD)
-            check_out: Check-out date (YYYY-MM-DD)
-            adults: Number of adults
-            children: List of children ages
-            room_type: Room type preference
-            meal_plan: Meal plan preference
-            guest_name: Guest's name
-            guest_phone: Guest's phone number
+            check_in: Data de check-in (YYYY-MM-DD)
+            check_out: Data de check-out (YYYY-MM-DD)
+            adults: Número de adultos
+            children: Lista de idades das crianças
+            room_type: Tipo de quarto preferido
+            meal_plan: Plano de refeições
+            guest_name: Nome do hóspede
+            guest_phone: Telefone do hóspede
 
         Returns:
-            Confirmation message with reservation details
+            Mensagem de confirmação com detalhes da reserva
         """
-        # This is a placeholder implementation.
-        # In a real application, this would interact with a database.
-        reservation_code = f"RES-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        return (
-            f"Reserva confirmada! ✅\n\n"
-            f"Código da reserva: {reservation_code}\n"
-            f"Hóspede: {guest_name}\n"
-            f"Check-in: {check_in}\n"
-            f"Check-out: {check_out}\n"
-            f"Acomodação: {room_type}\n"
-            f"Plano de refeições: {meal_plan}\n\n"
-            f"Agradecemos a preferência! 😊"
-        )
+        try:
+            # Parse das datas
+            check_in_date = self._parse_flexible_date(check_in)
+            check_out_date = self._parse_flexible_date(check_out)
+            
+            # Gera código único de reserva
+            reservation_code = f"HP-{datetime.now().strftime('%Y%m%d')}-{datetime.now().strftime('%H%M%S')}"
+            
+            # Calcula o total da reserva
+            parsed_meal_plan = parse_meal_plan(meal_plan) if meal_plan else MealPlan.CAFE_DA_MANHA
+            request = ReservationRequest(
+                check_in=check_in_date,
+                check_out=check_out_date,
+                adults=adults,
+                children=children or [],
+                room_type=RoomType(room_type) if room_type else RoomType.TERREO,
+                meal_plan=parsed_meal_plan,
+                is_holiday=bool(is_holiday_period(check_in_date, check_out_date))
+            )
+            
+            prices = self.calculator.calculate(request)
+            selected_price = next(
+                (p for p in prices if p.room_type.value == (room_type or "terreo") 
+                 and p.meal_plan == parsed_meal_plan), 
+                prices[0]
+            )
+            
+            # Salva no sistema de reservas
+            reservation_manager = get_reservation_manager()
+            reservation = reservation_manager.create_reservation(
+                code=reservation_code,
+                guest_name=guest_name or "A definir",
+                guest_phone=guest_phone or "A definir",
+                guest_document="A definir",
+                check_in=check_in_date,
+                check_out=check_out_date,
+                adults=adults,
+                children=children or [],
+                room_type=room_type or "terreo",
+                meal_plan=meal_plan or "cafe_da_manha",
+                total_amount=float(selected_price.total)
+            )
+            
+            # Salva também no contexto da conversa
+            context = self._get_conversation_context(guest_phone or "unknown")
+            context.current_request = request
+            context.metadata["reservation_code"] = reservation_code
+            context.metadata["total_amount"] = float(selected_price.total)
+            context.metadata["confirmation_status"] = "confirmed"
+            context.metadata["created_at"] = datetime.now().isoformat()
+            context.metadata["guest_name"] = guest_name
+            context.metadata["guest_phone"] = guest_phone
+            
+            # Formata os nomes para exibição
+            room_display = "Térreo" if room_type == "terreo" else "Superior"
+            meal_display = {
+                "cafe_da_manha": "Apenas café da manhã",
+                "meia_pensao": "Meia pensão", 
+                "pensao_completa": "Pensão completa"
+            }.get(meal_plan, "Apenas café da manhã")
+            
+            nights = (check_out_date - check_in_date).days
+            
+            return (
+                f"✅ *Reserva Confirmada!* 🎉\n\n"
+                f"📋 *Código:* {reservation_code}\n"
+                f"👤 *Hóspede:* {guest_name or 'A definir'}\n"
+                f"📅 *Check-in:* {check_in_date.strftime('%d/%m/%Y')}\n"
+                f"📅 *Check-out:* {check_out_date.strftime('%d/%m/%Y')}\n"
+                f"🌙 *Noites:* {nights}\n"
+                f"👥 *Hóspedes:* {adults} adulto(s)" + 
+                (f" + {len(children)} criança(s)" if children else "") + "\n"
+                f"🏠 *Quarto:* {room_display}\n"
+                f"🍽️ *Refeições:* {meal_display}\n"
+                f"💰 *Total:* {selected_price.format_price()}\n\n"
+                f"📱 *Próximos passos:*\n"
+                f"1️⃣ Anote seu código: *{reservation_code}*\n"
+                f"2️⃣ Para finalizar, envie seus dados:\n"
+                f"   • Nome completo\n"
+                f"   • CPF\n"
+                f"   • Telefone\n\n"
+                f"💳 *Pagamento:*\n"
+                f"Você pode pagar na chegada ou solicitar link PIX agora mesmo!\n\n"
+                f"🏨 Obrigado por escolher o Hotel Passarim! 🙏"
+            )
+            
+        except Exception as e:
+            logger.error("Erro ao criar reserva", error=str(e))
+            return (
+                "❌ Ops! Houve um problema ao criar sua reserva.\n\n"
+                "Por favor, tente novamente ou ligue para nossa recepção:\n"
+                "📞 (15) 3542-0000\n\n"
+                "Estamos aqui para ajudar! 😊"
+            )
+
+    async def get_reservation_details(
+        self,
+        reservation_code: str,
+        guest_phone: str = None
+    ) -> str:
+        """
+        Consulta detalhes de uma reserva pelo código.
+        
+        Args:
+            reservation_code: Código da reserva
+            guest_phone: Telefone do hóspede (opcional)
+            
+        Returns:
+            Detalhes da reserva ou mensagem de erro
+        """
+        try:
+            # Busca no contexto se for o mesmo telefone
+            if guest_phone and guest_phone in self.contexts:
+                context = self.contexts[guest_phone]
+                if context.metadata.get("reservation_code") == reservation_code:
+                    request = context.current_request
+                    if request:
+                        room_display = "Térreo" if request.room_type == RoomType.TERREO else "Superior"
+                        meal_display = {
+                            MealPlan.CAFE_DA_MANHA: "Apenas café da manhã",
+                            MealPlan.MEIA_PENSAO: "Meia pensão",
+                            MealPlan.PENSAO_COMPLETA: "Pensão completa"
+                        }.get(request.meal_plan, "Apenas café da manhã")
+                        
+                        total_amount = context.metadata.get("total_amount", 0)
+                        guest_name = context.metadata.get("guest_name", "A definir")
+                        status = context.metadata.get("confirmation_status", "pendente")
+                        created_at = context.metadata.get("created_at")
+                        
+                        nights = request.nights
+                        
+                        return (
+                            f"📋 *Detalhes da Reserva {reservation_code}*\n\n"
+                            f"✅ *Status:* {status.capitalize()}\n"
+                            f"👤 *Hóspede:* {guest_name}\n"
+                            f"📅 *Check-in:* {request.check_in.strftime('%d/%m/%Y')}\n"
+                            f"📅 *Check-out:* {request.check_out.strftime('%d/%m/%Y')}\n"
+                            f"🌙 *Noites:* {nights}\n"
+                            f"👥 *Hóspedes:* {request.adults} adulto(s)" +
+                            (f" + {len(request.children)} criança(s)" if request.children else "") + "\n"
+                            f"🏠 *Quarto:* {room_display}\n"
+                            f"🍽️ *Refeições:* {meal_display}\n"
+                            f"💰 *Total:* R$ {total_amount:,.2f}\n\n"
+                            f"📱 *Informações de contato:*\n"
+                            f"📞 Hotel: (15) 3542-0000\n"
+                            f"💬 WhatsApp: Este chat\n\n"
+                            f"Precisa de alguma alteração? 😊"
+                        )
+            
+            # Se não encontrou, informa que precisa mais dados
+            return (
+                f"🔍 *Consulta de Reserva*\n\n"
+                f"Não encontrei a reserva *{reservation_code}* em nosso sistema.\n\n"
+                f"📝 *Verifique se:*\n"
+                f"• O código está correto\n"
+                f"• A reserva foi feita neste WhatsApp\n\n"
+                f"📞 *Contato direto:*\n"
+                f"Ligue para (15) 3542-0000 para mais informações.\n\n"
+                f"Como posso ajudar? 😊"
+            )
+            
+        except Exception as e:
+            logger.error("Erro ao consultar reserva", error=str(e))
+            return (
+                "❌ Erro ao consultar reserva.\n\n"
+                "Tente novamente ou ligue:\n"
+                "📞 (15) 3542-0000"
+            )
+
+    async def generate_payment_pix(
+        self,
+        reservation_code: str,
+        guest_phone: str = None
+    ) -> str:
+        """
+        Gera link de pagamento PIX para uma reserva.
+        
+        Args:
+            reservation_code: Código da reserva
+            guest_phone: Telefone do hóspede
+            
+        Returns:
+            Instruções de pagamento PIX
+        """
+        try:
+            # Busca a reserva no contexto
+            if guest_phone and guest_phone in self.contexts:
+                context = self.contexts[guest_phone]
+                if context.metadata.get("reservation_code") == reservation_code:
+                    total_amount = context.metadata.get("total_amount", 0)
+                    guest_name = context.metadata.get("guest_name", "Hóspede")
+                    
+                    # Gera chave PIX do hotel (simulado)
+                    pix_key = "hotel.passarim@gmail.com"
+                    
+                    return (
+                        f"💳 *Pagamento PIX - Reserva {reservation_code}*\n\n"
+                        f"💰 *Valor:* R$ {total_amount:,.2f}\n"
+                        f"👤 *Beneficiário:* Hotel Passarim\n"
+                        f"🔑 *Chave PIX:* {pix_key}\n\n"
+                        f"📱 *Como pagar:*\n"
+                        f"1️⃣ Abra seu banco/carteira digital\n"
+                        f"2️⃣ Escolha \"PIX\"\n"
+                        f"3️⃣ Cole a chave: {pix_key}\n"
+                        f"4️⃣ Informe o valor: R$ {total_amount:,.2f}\n"
+                        f"5️⃣ Na descrição coloque: {reservation_code}\n\n"
+                        f"⚡ *Pagamento instantâneo!*\n"
+                        f"Assim que recebermos, sua reserva será confirmada.\n\n"
+                        f"🎯 *Desconto de 5%* para pagamento à vista via PIX!\n"
+                        f"Valor com desconto: R$ {total_amount * 0.95:,.2f}\n\n"
+                        f"Dúvidas? Estou aqui para ajudar! 😊"
+                    )
+            
+            return (
+                f"❌ Reserva {reservation_code} não encontrada.\n\n"
+                f"Confirme o código ou ligue:\n"
+                f"📞 (15) 3542-0000"
+            )
+            
+        except Exception as e:
+            logger.error("Erro ao gerar PIX", error=str(e))
+            return "❌ Erro ao gerar pagamento PIX. Tente novamente."
+
+    async def confirm_guest_data(
+        self,
+        guest_phone: str,
+        guest_name: str,
+        guest_document: str,
+        reservation_code: str = None
+    ) -> str:
+        """
+        Confirma e salva os dados do hóspede para finalizar a reserva.
+        
+        Args:
+            guest_phone: Telefone do hóspede
+            guest_name: Nome completo
+            guest_document: CPF ou documento
+            reservation_code: Código da reserva (opcional)
+            
+        Returns:
+            Confirmação dos dados e próximos passos
+        """
+        try:
+            # Busca o contexto da conversa
+            context = self._get_conversation_context(guest_phone)
+            
+            # Se não foi informado código, usa o do contexto
+            if not reservation_code:
+                reservation_code = context.metadata.get("reservation_code")
+            
+            if not reservation_code:
+                return (
+                    "❌ Não encontrei uma reserva ativa.\n\n"
+                    "Faça uma nova reserva ou informe o código existente."
+                )
+            
+            # Salva os dados no contexto
+            context.metadata.update({
+                "guest_name": guest_name,
+                "guest_document": guest_document,
+                "data_confirmed": True,
+                "data_confirmed_at": datetime.now().isoformat()
+            })
+            
+            # Atualiza o nome no contexto da conversa
+            context.guest_name = guest_name.split()[0]  # Primeiro nome
+            
+            total_amount = context.metadata.get("total_amount", 0)
+            
+            return (
+                f"✅ *Dados Confirmados!*\n\n"
+                f"📋 *Reserva:* {reservation_code}\n"
+                f"👤 *Nome:* {guest_name}\n"
+                f"📄 *Documento:* {guest_document}\n"
+                f"📱 *Telefone:* {guest_phone}\n\n"
+                f"🎉 *Sua reserva está confirmada!*\n\n"
+                f"💳 *Opções de pagamento:*\n"
+                f"1️⃣ PIX (5% desconto) - R$ {total_amount * 0.95:,.2f}\n"
+                f"2️⃣ Cartão na chegada - R$ {total_amount:,.2f}\n"
+                f"3️⃣ Dinheiro na chegada - R$ {total_amount:,.2f}\n\n"
+                f"📧 Em breve você receberá:\n"
+                f"• Voucher de confirmação\n"
+                f"• Instruções de chegada\n"
+                f"• Link para check-in antecipado\n\n"
+                f"🏨 *Hotel Passarim*\n"
+                f"📍 Endereço será enviado em breve\n"
+                f"📞 (15) 3542-0000\n\n"
+                f"Aguardamos você! 🙏✨"
+            )
+            
+        except Exception as e:
+            logger.error("Erro ao confirmar dados", error=str(e))
+            return "❌ Erro ao confirmar dados. Tente novamente."
