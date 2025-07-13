@@ -138,8 +138,17 @@ class AnaAgent:
         conv_context.add_message("user", message)
         
         # First message - send greeting only if it's not a direct query
-        is_direct_query = any(keyword in message.lower() for keyword in ["diaria", "preço", "valor", "quanto custa"])
-        if len(conv_context.history) == 1 and conv_context.state == "initial" and not is_direct_query:
+        is_direct_query = any(keyword in message.lower() for keyword in [
+            "diaria", "diária", "preço", "valor", "quanto custa", "reserva", 
+            "hospedagem", "quarto", "hoje", "amanhã", "disponibilidade"
+        ])
+        
+        # Also check if message contains date references
+        has_date_reference = any(keyword in message.lower() for keyword in [
+            "hoje", "amanhã", "amanha", "semana", "fim de semana", "janeiro", "fevereiro"
+        ])
+        
+        if len(conv_context.history) == 1 and conv_context.state == "initial" and not (is_direct_query or has_date_reference):
             conv_context.state = "greeting_sent"
             response = AnaResponse(text=ANA_GREETING)
             conv_context.add_message("assistant", response.text)

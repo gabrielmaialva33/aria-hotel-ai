@@ -104,6 +104,7 @@ class ConversationContext(BaseModel):
     state: str = "initial"  # initial, greeting_sent, collecting_info, presenting_options, etc.
     history: List[Dict[str, str]] = Field(default_factory=list)
     preferences: Dict[str, Any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # For storing reservation data, etc
     language: str = "pt_BR"
 
     def add_message(self, role: str, content: str):
